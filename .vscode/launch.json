@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha All (Dist)",
+      "runtimeArgs": [
+        "--expose-gc",
+        "--require", "esm",
+        "--require", "${workspaceFolder}/tests/setup.node.js",
+         ],
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--timeout", "999999",
+        "--colors",
+        "--opts", "${workspaceFolder}/mocha.opts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}

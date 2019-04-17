@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig",
+  "compilerOptions": {
+    "outDir": "./module/",
+    "noEmit": false,
+    "sourceMap": true,
+    "allowJs": true
+  },
+  "exclude": [
+    "**/tests/**",
+    "src/**/*.test.*",
+    "src/**/*.mock.*",
+    "src/**/*.spec.*"
+  ]
+}

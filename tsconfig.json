@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "esnext",
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "isolatedModules": true,
+    "sourceMap": true,
+    "outDir": "./tmp-out/",
+    "noEmit": true,
+    "allowJs": false,
+    "typeRoots": ["./node_modules/@types", "./typings"],
+    "types": ["tc39-weakrefs"],
+    "moduleResolution": "classic",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src", "tests"],
+  "exclude": ["tests/setup"],
+  "compileOnSave": true
+}

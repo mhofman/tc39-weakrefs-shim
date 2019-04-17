@@ -1,0 +1,9 @@
+.chrome
+node_modules
+coverage
+dist
+lib
+module
+vendor
+tmp*
+*.tgz

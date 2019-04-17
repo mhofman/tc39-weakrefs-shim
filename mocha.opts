@@ -1,0 +1,2 @@
+src/**/!(*.shared)@(.test|.spec).@(ts|mjs|js)
+tests/**/!(*+(.mock|.shared))@(.test|.spec).@(ts|mjs|js)
