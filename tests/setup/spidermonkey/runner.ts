@@ -1,3 +1,4 @@
+// @ts-ignore
 this.queueMicrotask = enqueueJob;
 
 var execute = (() => {

@@ -1,5 +1,7 @@
-import WeakTag from "./weak-napi/weak-tag.js";
-import ObjectInfo from "./weak-napi/object-info.js";
+// @ts-ignore
+import WeakTag from "@mhofman/weak-napi-native/weak-tag.js";
+// @ts-ignore
+import ObjectInfo from "@mhofman/weak-napi-native/object-info.js";
 
 const map = new WeakMap<object, Set<WeakTag>>();
 

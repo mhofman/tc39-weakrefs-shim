@@ -3,8 +3,7 @@
   "compilerOptions": {
     "outDir": "./module/",
     "noEmit": false,
-    "sourceMap": true,
-    "allowJs": true
+    "sourceMap": true
   },
   "exclude": [
     "**/tests/**",

@@ -4,7 +4,6 @@
     "outDir": "../../../tmp-jsshell/",
     "noEmit": false,
     "sourceMap": false,
-    "allowJs": true,
     "types": ["tc39-weakrefs", "jsshell"]
   },
   "exclude": ["../../../tests/setup/node"]

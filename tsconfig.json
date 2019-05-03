@@ -17,6 +17,6 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["src", "tests"],
-  "exclude": ["tests/setup"],
+  "exclude": ["tests/setup", "tests/setup.*.js"],
   "compileOnSave": true
 }

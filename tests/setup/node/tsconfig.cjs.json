@@ -3,6 +3,8 @@
   "compilerOptions": {
     "outDir": "../../../tmp-node-cjs/",
     "module": "commonjs",
-    "esModuleInterop": true
+    "target": "ES2017",
+    "esModuleInterop": true,
+    "allowJs": true
   }
 }
