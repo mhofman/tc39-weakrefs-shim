@@ -1,0 +1,11 @@
+// See https://aka.ms/vscode-remote/containers for the
+// documentation about the devcontainer.json format
+{
+	"name": "Node.js (latest LTS) & TypeScript",
+	"dockerFile": "Dockerfile",
+	"extensions": [
+		"ms-vscode.vscode-typescript-tslint-plugin",
+		"esbenp.prettier-vscode",
+		"streetsidesoftware.code-spell-checker"
+	]
+}

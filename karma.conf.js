@@ -1,10 +1,14 @@
 let coveragePreprocessors = ["karma-coverage-istanbul-instrumenter"];
 let browsers = ["GCChromeHeadless"];
+let flags = ['--js-flags="--expose-gc --harmony-weak-refs"'];
 let singleRun = true;
 if (process.argv.some(arg => arg === "--debug")) {
     coveragePreprocessors = [];
     browsers = ["GCChromeDebug"];
     singleRun = false;
+}
+if (process.env.INSIDE_DOCKER) {
+    flags.push("--no-sandbox");
 }
 
 module.exports = function(config) {
@@ -82,11 +86,11 @@ module.exports = function(config) {
         customLaunchers: {
             GCChromeHeadless: {
                 base: "ChromeCanaryHeadless",
-                flags: ['--js-flags="--expose-gc --harmony-weak-refs"'],
+                flags,
             },
             GCChromeDebug: {
                 base: "ChromeCanary",
-                flags: ['--js-flags="--expose-gc --harmony-weak-refs"'],
+                flags,
                 chromeDataDir: ".chrome",
             },
         },
