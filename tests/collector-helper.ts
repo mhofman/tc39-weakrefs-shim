@@ -3,6 +3,8 @@ import { available as weakrefsAvailable } from "../src/index.js";
 import globalWeakrefsAvailable from "../src/global/available.js";
 import nodeStubAvailable from "../src/node/available.js";
 
+import { FinalizationGroup } from "../src/weakrefs.js";
+
 declare const gc: () => void;
 
 function taskTurn(): Promise<undefined> {

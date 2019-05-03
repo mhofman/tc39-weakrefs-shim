@@ -10,6 +10,8 @@ import { makeGcOf } from "../../tests/collector-helper.js";
 import { itCatchCleanStackError } from "../../tests/global-error-helper.js";
 import { combine } from "../utils/iterable.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 export function expectThrowIfNotObject(
     functionToTest: (value: any) => any,
     skipUndefined = false

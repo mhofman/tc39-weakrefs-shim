@@ -1,5 +1,7 @@
 import { merge } from "../utils/set.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 interface ObjectInfoAgentHoldObject {
     (object: object): void;
 }

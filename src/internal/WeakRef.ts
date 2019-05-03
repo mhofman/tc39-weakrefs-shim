@@ -3,6 +3,8 @@ import isObject from "../utils/lodash/isObject.js";
 import { Agent } from "./Agent.js";
 import { WeakRefsGetObjectInfo } from "./FinalizationGroup.js";
 
+import { WeakRef } from "../weakrefs.js";
+
 export interface WeakRefsGetTarget<ObjectInfo> {
     (info: ObjectInfo): object | undefined;
 }
@@ -24,7 +26,10 @@ export function createWeakRefClassShim<
     getTarget: WeakRefsGetTarget<ObjectInfo>,
     initSlots: (target: object, self: WeakRef) => Slots = target =>
         new WeakRefSlots<ObjectInfo>(getInfo(target)) as Slots
-): [WeakRef.Constructor, Privates<Slots, WeakRef<object>>] {
+): [
+    WeakRef.Constructor,
+    Privates<Slots, import("../weakrefs.js").WeakRef<object>>
+] {
     const privates = makePrivates<Slots, WeakRef<object>>();
 
     class WeakRef<U extends object> {

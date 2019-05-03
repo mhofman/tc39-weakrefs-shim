@@ -2,6 +2,8 @@ import makePrivates from "../utils/privates.js";
 import isObject from "../utils/lodash/isObject.js";
 import { Agent } from "./Agent.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 export interface WeakRefsObjectInfoIsAlive<ObjectInfo> {
     (info: ObjectInfo): boolean;
 }

@@ -4,6 +4,8 @@ import { createFinalizationGroupClassShim } from "./FinalizationGroup.js";
 import { AgentMock, ObjectInfoMock } from "./Agent.mock.js";
 import { expectThrowIfNotObject } from "../tests/FinalizationGroup.shared.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 describe("FinalizationGroupShim", function() {
     type Holding = number;
     let objectMap: Map<object, ObjectInfoMock>;

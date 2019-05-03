@@ -2,6 +2,8 @@ import { chai } from "../../tests/setup.js";
 
 import { Agent } from "./Agent.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 export class FinalizationGroupMock implements FinalizationGroup<any> {
     constructor(
         private cleanupCallback: FinalizationGroup.CleanupCallback<any>

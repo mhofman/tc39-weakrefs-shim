@@ -3,6 +3,8 @@ import { chai } from "../../tests/setup.js";
 import { Agent } from "./Agent.js";
 import { Interface } from "../utils/interface.js";
 
+import { FinalizationGroup } from "../weakrefs.js";
+
 export class ObjectInfoMock {
     constructor(public target: object | undefined = {}) {}
 }

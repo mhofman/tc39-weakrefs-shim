@@ -5,6 +5,8 @@ import { createWeakRefClassShim } from "./WeakRef.js";
 import { AgentMock, ObjectInfoMock } from "./Agent.mock.js";
 import { expectThrowIfNotObject } from "../tests/FinalizationGroup.shared.js";
 
+import { WeakRef } from "../weakrefs.js";
+
 describe("WeakRefShim", function() {
     let objectMap: Map<object, ObjectInfoMock>;
     let agent: AgentMock<ObjectInfoMock>;

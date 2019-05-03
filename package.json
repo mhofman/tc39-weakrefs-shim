@@ -6,9 +6,10 @@
   "module": "module/index.js",
   "scripts": {
     "build": "npm run build:module && npm run build:lib",
-    "build:module": "tsc -b tsconfig.dist.module.json && copyup src/**/*.js module && cp package.module.json module/package.json",
-    "build:lib": "tsc -b tsconfig.dist.lib.json && cp package.lib.json lib/package.json",
+    "build:module": "tsc -b tsconfig.dist.module.json && tsc -p tsconfig.dist.module.json --declaration --isolatedModules false --allowJs false --emitDeclarationOnly && copyup src/**/*.{js,d.ts} module && cp package.module.json module/package.json",
+    "build:lib": "tsc -b tsconfig.dist.lib.json && tsc -p tsconfig.dist.lib.json --declaration --isolatedModules false --allowJs false --emitDeclarationOnly && copyup src/**/*.d.ts lib && cp package.lib.json lib/package.json",
     "clean": "rimraf dist lib module coverage tmp-jsshell tmp-node-esm tmp-node-cjs",
+    "prepack": "npm run clean && npm run build",
     "test:browser": "karma start",
     "test:browser:watch": "karma start --no-single-run",
     "test:browser:debug": "karma start --debug",

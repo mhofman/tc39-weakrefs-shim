@@ -5,6 +5,8 @@ import ObjectInfo from "@mhofman/weak-napi-native/object-info.js";
 
 const map = new WeakMap<object, Set<WeakTag>>();
 
+import { FinalizationGroup, WeakRef } from "../weakrefs.js";
+
 // stub FinalizationGroup that calls the callback directly for each
 // registered target
 // No holding or unregister
@@ -13,7 +15,7 @@ class FinalizationGroupNodeStub implements FinalizationGroup<ObjectInfo> {
     static get [Symbol.species]() {
         return FinalizationGroupNodeStub;
     }
-    constructor(callback: FinalizationGroup.CleanupCallback<ObjectInfo>) {
+    constructor(callback: FinalizationGroup.CleanupCallback<any>) {
         this.finalizedCallback = function(this: ObjectInfo) {
             callback(([this] as unknown) as FinalizationGroup.CleanupIterator<
                 ObjectInfo
@@ -22,8 +24,8 @@ class FinalizationGroupNodeStub implements FinalizationGroup<ObjectInfo> {
     }
     register(
         target: object,
-        holdings: ObjectInfo,
-        unregisterToken?: any
+        holdingsIgnored: any,
+        unregisterTokenIgnored?: any
     ): ObjectInfo {
         let tagSet = map.get(target);
         if (!tagSet) {
@@ -39,9 +41,7 @@ class FinalizationGroupNodeStub implements FinalizationGroup<ObjectInfo> {
         return false;
     }
     cleanupSome(
-        cleanupCallback?:
-            | FinalizationGroup.CleanupCallback<ObjectInfo>
-            | undefined
+        cleanupCallback?: FinalizationGroup.CleanupCallback<any> | undefined
     ): void {}
 }
 

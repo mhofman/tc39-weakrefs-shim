@@ -2,6 +2,8 @@ import { before, expect, describe, beforeEach, it } from "../../tests/setup.js";
 import { makeGcOf } from "../../tests/collector-helper.js";
 import { expectThrowIfNotObject } from "./FinalizationGroup.shared.js";
 
+import { FinalizationGroup, WeakRef } from "../weakrefs.js";
+
 export function shouldBehaveAsWeakRefAccordingToSpec(
     details: Promise<{
         WeakRef: WeakRef.Constructor;

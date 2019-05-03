@@ -2,6 +2,8 @@ import globalAvailable from "./global/available.js";
 import nodeAvailable from "./node/available.js";
 import spidermonkeyAvailable from "./spidermonkey/available.js";
 
+import { FinalizationGroup, WeakRef } from "./weakrefs.js";
+
 function testKnownImplementationIssues(
     WeakRef: WeakRef.Constructor,
     FinalizationGroup: FinalizationGroup.Constructor

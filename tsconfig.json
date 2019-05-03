@@ -12,9 +12,8 @@
     "noEmit": true,
     "allowJs": false,
     "typeRoots": ["./node_modules/@types", "./typings"],
-    "types": ["tc39-weakrefs"],
-    "moduleResolution": "classic",
-    "allowSyntheticDefaultImports": true
+    "types": [],
+    "moduleResolution": "classic"
   },
   "include": ["src", "tests"],
   "exclude": ["tests/setup", "tests/setup.*.js"],

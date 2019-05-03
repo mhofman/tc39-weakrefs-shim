@@ -4,6 +4,8 @@ import { setImmediate, clearImmediate } from "./utils/tasks/setImmediate.js";
 import { createWeakRefClassShim } from "./internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "./internal/FinalizationGroup.js";
 
+import { FinalizationGroup, WeakRef } from "./weakrefs.js";
+
 export function wrap(
     WeakRef: WeakRef.Constructor,
     FinalizationGroup: FinalizationGroup.Constructor
