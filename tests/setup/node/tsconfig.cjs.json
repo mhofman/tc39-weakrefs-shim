@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.esm",
+  "compilerOptions": {
+    "outDir": "../../../tmp-node-cjs/",
+    "module": "commonjs",
+    "esModuleInterop": true
+  }
+}

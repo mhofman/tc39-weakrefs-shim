@@ -1,6 +1,4 @@
-require("ts-node/register/transpile-only");
-require("./setup/node/module-resolver");
-
+"use strict";
 const chai = require("chai");
 const spies = require("chai-spies");
 const Runner = require("mocha").Runner;

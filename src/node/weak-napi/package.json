@@ -1,0 +1,7 @@
+{
+  "type": "commonjs",
+  "main": "index.js",
+  "esm": {
+    "mode": "strict"
+  }
+}

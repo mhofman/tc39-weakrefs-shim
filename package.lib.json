@@ -1,0 +1,6 @@
+{
+  "type": "commonjs",
+  "esm": {
+    "mode": "strict"
+  }
+}

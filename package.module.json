@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "esm": {
+    "cjs": false,
+    "mode": "all"
+  }
+}

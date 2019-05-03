@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.dist.module",
+  "compilerOptions": {
+    "outDir": "./lib",
+    "module": "commonjs",
+    "esModuleInterop": true
+  }
+}

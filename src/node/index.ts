@@ -1,4 +1,5 @@
-import { WeakTag, ObjectInfo } from "./weak-napi.js";
+import WeakTag from "./weak-napi/weak-tag.js";
+import ObjectInfo from "./weak-napi/object-info.js";
 
 import { createWeakRefClassShim } from "../internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "../internal/FinalizationGroup.js";
@@ -9,15 +10,15 @@ import { setImmediate, clearImmediate } from "../utils/tasks/setImmediate.js";
 const tagCollector = new WeakMap<
     object,
     {
-        info: WeakTag.ObjectInfo;
+        info: ObjectInfo;
         tag: WeakTag;
     }
 >();
 
-const observedInfos = new Set<WeakTag.ObjectInfo>();
-let finalizedInfos = new Set<WeakTag.ObjectInfo>();
+const observedInfos = new Set<ObjectInfo>();
+let finalizedInfos = new Set<ObjectInfo>();
 
-function finalizedCallback(this: WeakTag.ObjectInfo) {
+function finalizedCallback(this: ObjectInfo) {
     if (!observedInfos.has(this)) return;
     observedInfos.delete(this);
     finalizedInfos.add(this);
@@ -34,7 +35,7 @@ function getInfo(target: object) {
     return objectDetails.info;
 }
 
-const agent = new Agent<WeakTag.ObjectInfo>(
+const agent = new Agent<ObjectInfo>(
     () => {
         const finalized = finalizedInfos;
         finalizedInfos = new Set();

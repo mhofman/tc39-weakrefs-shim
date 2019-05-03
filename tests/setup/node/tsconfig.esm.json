@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig",
+  "compilerOptions": {
+    "outDir": "../../../tmp-node-esm/",
+    "noEmit": false,
+    "sourceMap": false,
+    "allowJs": true
+  },
+  "exclude": [
+    "../../../tests/setup.spidermonkey.js",
+    "../../../tests/setup/spidermonkey"
+  ]
+}

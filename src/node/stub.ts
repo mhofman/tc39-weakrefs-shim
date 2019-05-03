@@ -1,30 +1,28 @@
-import { WeakTag, ObjectInfo } from "./weak-napi.js";
+import WeakTag from "./weak-napi/weak-tag.js";
+import ObjectInfo from "./weak-napi/object-info.js";
 
 const map = new WeakMap<object, Set<WeakTag>>();
 
 // stub FinalizationGroup that calls the callback directly for each
 // registered target
 // No holding or unregister
-class FinalizationGroupNodeStub
-    implements FinalizationGroup<WeakTag.ObjectInfo> {
-    private finalizedCallback: WeakTag.FinalizedCallback;
+class FinalizationGroupNodeStub implements FinalizationGroup<ObjectInfo> {
+    private finalizedCallback: ObjectInfo.FinalizedCallback;
     static get [Symbol.species]() {
         return FinalizationGroupNodeStub;
     }
-    constructor(
-        callback: FinalizationGroup.CleanupCallback<WeakTag.ObjectInfo>
-    ) {
-        this.finalizedCallback = function(this: WeakTag.ObjectInfo) {
+    constructor(callback: FinalizationGroup.CleanupCallback<ObjectInfo>) {
+        this.finalizedCallback = function(this: ObjectInfo) {
             callback(([this] as unknown) as FinalizationGroup.CleanupIterator<
-                WeakTag.ObjectInfo
+                ObjectInfo
             >);
         };
     }
     register(
         target: object,
-        holdings: WeakTag.ObjectInfo,
+        holdings: ObjectInfo,
         unregisterToken?: any
-    ): WeakTag.ObjectInfo {
+    ): ObjectInfo {
         let tagSet = map.get(target);
         if (!tagSet) {
             tagSet = new Set();
@@ -40,13 +38,13 @@ class FinalizationGroupNodeStub
     }
     cleanupSome(
         cleanupCallback?:
-            | FinalizationGroup.CleanupCallback<WeakTag.ObjectInfo>
+            | FinalizationGroup.CleanupCallback<ObjectInfo>
             | undefined
     ): void {}
 }
 
 class WeakRefNodeStub<T extends object = object> implements WeakRef<T> {
-    private readonly info: WeakTag.ObjectInfo;
+    private readonly info: ObjectInfo;
 
     static get [Symbol.species]() {
         return WeakRefNodeStub;

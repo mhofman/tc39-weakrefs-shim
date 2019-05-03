@@ -1,3 +1,4 @@
+"use strict";
 const Module = require("module");
 
 // Strip .js extensions for relative imports

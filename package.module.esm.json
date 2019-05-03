@@ -1,0 +1,6 @@
+{
+  "esm": {
+    "cjs": false,
+    "mode": "all"
+  }
+}
