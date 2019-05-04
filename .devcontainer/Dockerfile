@@ -1,4 +1,4 @@
-FROM node:lts
+FROM node:current
 
 # Configure apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -43,3 +43,4 @@ RUN usermod -G audio,video node
 USER node
 ENV HOME /home/node
 ENV INSIDE_DOCKER=1
+RUN mkdir -p ~/.ssh && ssh-keyscan github.com 2>/dev/null >> ~/.ssh/known_hosts
