@@ -348,6 +348,16 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 expect(workingCleanupSome).to.be.true;
             });
 
+            describe("should throw when called with non-object", function() {
+                beforeEach(function() {
+                    if (!workingCleanupSome) this.skip();
+                });
+
+                expectThrowIfNotObject(
+                    (value: any) => new FinalizationGroup(value)
+                );
+            });
+
             it("should throw when called with non-callable", async function() {
                 const finalizationGroup = new FinalizationGroup(() => {});
                 // No point testing this if cleanupSome does nothing

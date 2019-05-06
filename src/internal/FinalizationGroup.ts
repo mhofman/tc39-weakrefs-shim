@@ -118,7 +118,11 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
         ): void {
             const group = this;
             const slots = privates<Slots<Holdings>>(group);
-            if (!cleanupCallback) cleanupCallback = slots.cleanupCallback;
+            if (!cleanupCallback) {
+                cleanupCallback = slots.cleanupCallback;
+            } else if (typeof cleanupCallback != "function") {
+                throw new TypeError();
+            }
 
             const iteratorFunction = function*() {
                 for (const cell of slots.cells) {
