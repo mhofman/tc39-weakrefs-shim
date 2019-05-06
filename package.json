@@ -1,6 +1,6 @@
 {
   "name": "tc39-weakrefs-shim",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Shim for TC39 Weakrefs proposal",
   "main": "lib/index.js",
   "module": "module/index.js",
@@ -71,7 +71,7 @@
     "prettier": "1.17.0",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
-    "typescript": "^3.4.3"
+    "typescript": "^3.4.5"
   },
   "dependencies": {
     "@mhofman/weak-napi-native": "^1.0.3"

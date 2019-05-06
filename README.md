@@ -30,11 +30,20 @@ However, V8's current implementation is not compliant with the latest version of
 
 ## Usage
 
-Currently this shim is only usable as an ES module. On node this means using [`esm`](https://github.com/standard-things/esm) or a transpiler.
+### CommonJS and ES Module support
 
-### Module entrypoint
+This package supports both ES Module import and CommonJS require.
 
-The module entrypoint (`module/index.js`) exports a `shim` async function that dynamically loads the implementation appropriate for the detected platform, if any. It internally uses [dynamic `import`](https://github.com/tc39/proposal-dynamic-import).
+Since ES Module support in NodeJS is experimental, and the eco-system hasn't fully standardized dual mode packages (especially isomorphic ones), the ES Module usage may require some extra configuration in the tooling. The implementation uses relative imports with `.js` extension for browser compatibility.\
+Any PR welcome for improvements and fixes when used with [`esm`](https://github.com/standard-things/esm), [`babel`](https://babeljs.io/), [`rollup`](https://github.com/rollup/rollup), [Node 12 experimental modules](https://medium.com/@nodejs/announcing-a-new-experimental-modules-1be8d2d6c2ff), or [directly in modern browsers](https://jakearchibald.com/2017/es-modules-in-browsers/).
+
+The ES module implementation is in the `module` folder. The CommonJS implementation is in the `lib` folder.\
+The package.json has both a `"main"` and [`"module"`](https://github.com/rollup/rollup/wiki/pkg.module) fields describing the corresponding entrypoints.
+
+### Entrypoint
+
+The package's main entrypoint exports a `shim` async function that dynamically loads the implementation appropriate for the detected platform, if any.\
+The ES Module implementation internally uses [dynamic `import`](https://github.com/tc39/proposal-dynamic-import).
 
 Since an implementation may not be available for the platform, the module entrypoint also exports an `available` boolean constant.
 
@@ -106,6 +115,10 @@ The dynamic loading can be skipped and the implementation directly imported, e.g
 
 ```javascript
 import { WeakRef, FinalizationGroup } from "tc39-weakrefs-shim/module/node";
+```
+
+```javascript
+const { WeakRef, FinalizationGroup } = require("tc39-weakrefs-shim/lib/node");
 ```
 
 The wrapper can be imported directly as well.
