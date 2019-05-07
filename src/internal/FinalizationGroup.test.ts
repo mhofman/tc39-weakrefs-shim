@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, chai } from "../../tests/setup.js";
 import { merge } from "../utils/set.js";
 import { createFinalizationGroupClassShim } from "./FinalizationGroup.js";
 import { AgentMock, ObjectInfoMock } from "./Agent.mock.js";
-import { expectThrowIfNotObject } from "../tests/FinalizationGroup.shared.js";
+import {
+    expectThrowIfNotObject,
+    shouldBehaveAsCleanupJopAccordingToSpec,
+} from "../tests/FinalizationGroup.shared.js";
 
 import { FinalizationGroup } from "../weakrefs.js";
 
@@ -327,6 +330,10 @@ describe("FinalizationGroupShim", function() {
             expect(callback).to.have.been.called();
         });
 
+        shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
+            finalizationGroup.cleanupSome(cleanupCallback);
+        });
+
         describe("collection behavior", function() {
             it("should yield previously finalized cells", async function() {
                 let object = {};
@@ -351,17 +358,6 @@ describe("FinalizationGroupShim", function() {
     });
 
     describe("iterator", function() {
-        it("should have the correct toStringTag", async function() {
-            let called = false;
-            finalizationGroup.cleanupSome(items => {
-                called = true;
-                expect(items[Symbol.toStringTag]).to.be.equal(
-                    "FinalizationGroup Cleanup Iterator"
-                );
-            });
-            if (!called) this.skip();
-        });
-
         it("should not yield any holding if nothing finalized", async function() {
             finalizationGroup.cleanupSome(items => {
                 const result = items.next();

@@ -124,12 +124,21 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
                 throw new TypeError();
             }
 
+            let isFinalizationGroupCleanupJobActive = true;
+            function assertInsideCleanupJob() {
+                if (!isFinalizationGroupCleanupJobActive) {
+                    throw TypeError();
+                }
+            }
+
             const iteratorFunction = function*() {
+                assertInsideCleanupJob();
                 for (const cell of slots.cells) {
                     if (isAlive(cell.info)) continue;
                     const holding = cell.holdings;
                     unregisterCell(group, cell);
                     yield holding;
+                    assertInsideCleanupJob();
                 }
             };
 
@@ -146,7 +155,11 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
                 Holdings
             >;
 
-            cleanupCallback(iterator);
+            try {
+                cleanupCallback(iterator);
+            } finally {
+                isFinalizationGroupCleanupJobActive = false;
+            }
         }
     }
 

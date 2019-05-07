@@ -42,6 +42,45 @@ export function expectThrowIfNotObject(
     });
 }
 
+export function shouldBehaveAsCleanupJopAccordingToSpec(
+    triggerCleanupJob: (
+        this: Mocha.Context,
+        cleanupCallback: FinalizationGroup.CleanupCallback<any>
+    ) => void | PromiseLike<any>
+): void {
+    it("should throw when using the iterator outside cleanup job", async function() {
+        let iterator: FinalizationGroup.CleanupIterator<any>;
+        const cleanupCallback = chai.spy<
+            FinalizationGroup.CleanupIterator<any>,
+            void
+        >(function(i) {
+            iterator = i;
+        });
+
+        await triggerCleanupJob.call(this, cleanupCallback);
+        expect(cleanupCallback).to.have.been.called();
+        expect(() => iterator!.next()).to.throw();
+    });
+
+    describe("iterator", function() {
+        it("should have the correct toStringTag", async function() {
+            let called = false;
+            const cleanupCallback = (
+                items: FinalizationGroup.CleanupIterator<any>
+            ) => {
+                called = true;
+                expect(items[Symbol.toStringTag]).to.be.equal(
+                    "FinalizationGroup Cleanup Iterator"
+                );
+            };
+
+            await triggerCleanupJob.call(this, cleanupCallback);
+
+            if (!called) this.skip();
+        });
+    });
+}
+
 export function shouldBehaveAsFinalizationGroupAccordingToSpec(
     details: Promise<{
         FinalizationGroup: FinalizationGroup.Constructor;
@@ -387,6 +426,12 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 if (workingCleanupSome) expect(callback).to.have.been.called();
             });
 
+            shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
+                if (!workingCleanupSome) this.skip();
+                const finalizationGroup = new FinalizationGroup(() => {});
+                finalizationGroup.cleanupSome(cleanupCallback);
+            });
+
             if (gcAvailable) {
                 describe("collection behavior", function() {
                     it("should yield previously finalized cells", async function() {
@@ -419,18 +464,6 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("iterator", function() {
-            it("should have the correct toStringTag", async function() {
-                const finalizationGroup = new FinalizationGroup(() => {});
-                let called = false;
-                finalizationGroup.cleanupSome(items => {
-                    called = true;
-                    expect(items[Symbol.toStringTag]).to.be.equal(
-                        "FinalizationGroup Cleanup Iterator"
-                    );
-                });
-                if (!called) this.skip();
-            });
-
             it("should not yield any holding if nothing finalized", async function() {
                 const finalizationGroup = new FinalizationGroup(() => {});
                 if (!workingCleanupSome) this.skip();
@@ -590,26 +623,17 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         }
                     );
 
-                    describe("iterator", function() {
-                        it("should have the correct toStringTag", async function() {
-                            let object = {};
-                            let called = false;
-                            const finalizationGroup = new FinalizationGroup(
-                                items => {
-                                    called = true;
-                                    expect(
-                                        items[Symbol.toStringTag]
-                                    ).to.be.equal(
-                                        "FinalizationGroup Cleanup Iterator"
-                                    );
-                                }
-                            );
-                            finalizationGroup.register(object, 42);
-                            const collected = gcOf!(object);
-                            object = undefined!;
-                            await collected;
-                            if (!called) this.skip();
-                        });
+                    shouldBehaveAsCleanupJopAccordingToSpec(function(
+                        cleanupCallback
+                    ) {
+                        let object = {};
+                        const finalizationGroup = new FinalizationGroup(
+                            cleanupCallback
+                        );
+                        finalizationGroup.register(object, 42);
+                        const collected = gcOf!(object);
+                        object = undefined!;
+                        return collected;
                     });
                 });
             } else {
