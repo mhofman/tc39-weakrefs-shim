@@ -26,11 +26,11 @@ export function expectThrowIfNotObject(
     });
 
     it("boolean", async function() {
-        expect(() => functionToTest(true)).to.throw();
+        expect(() => functionToTest(false)).to.throw();
     });
 
     it("string", async function() {
-        expect(() => functionToTest("string")).to.throw();
+        expect(() => functionToTest("")).to.throw();
     });
 
     it("symbol", async function() {
@@ -38,7 +38,7 @@ export function expectThrowIfNotObject(
     });
 
     it("number", async function() {
-        expect(() => functionToTest(42)).to.throw();
+        expect(() => functionToTest(0)).to.throw();
     });
 }
 
@@ -92,7 +92,10 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
     (!skip ? describe : describe.skip)("FinalizationGroup", function() {
         let FinalizationGroup: FinalizationGroup.Constructor;
         let gcOf:
-            | ((target?: object | undefined) => Promise<boolean>)
+            | ((
+                  target?: object,
+                  cancelPromise?: Promise<false>
+              ) => Promise<boolean>)
             | undefined;
         let unregisterReturnsBool = true;
         let workingCleanupSome = true;
@@ -388,12 +391,15 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
             });
 
             describe("should throw when called with non-object", function() {
+                let finalizationGroup: FinalizationGroup<any>;
                 beforeEach(function() {
                     if (!workingCleanupSome) this.skip();
+                    finalizationGroup = new FinalizationGroup(() => {});
                 });
 
                 expectThrowIfNotObject(
-                    (value: any) => new FinalizationGroup(value)
+                    (value: any) => finalizationGroup.cleanupSome(value),
+                    true
                 );
             });
 
@@ -631,6 +637,35 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         const collected = gcOf!(object);
                         object = undefined!;
                         await collected;
+                    });
+                });
+
+                describe("instance - collection behavior", function() {
+                    it("can be collected after all targets are finalized", async function() {
+                        let object = {};
+                        let callback = chai.spy();
+                        let observerCallback = chai.spy();
+                        let finalizationGroup = new FinalizationGroup(callback);
+                        let observer = new FinalizationGroup(observerCallback);
+                        observer.register(finalizationGroup, 0);
+                        finalizationGroup.register(object, 42);
+
+                        let objectCollected = gcOf!(object);
+                        object = undefined!;
+                        await objectCollected;
+
+                        expect(callback).to.have.been.called();
+
+                        let finalizationGroupCollected = gcOf!(
+                            finalizationGroup,
+                            new Promise(resolve =>
+                                setTimeout(resolve, 400, false)
+                            )
+                        );
+                        finalizationGroup = undefined!;
+                        await finalizationGroupCollected;
+
+                        expect(observerCallback).to.have.been.called();
                     });
                 });
             } else {

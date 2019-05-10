@@ -54,10 +54,56 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
     >();
 
     type Slots<Holdings> = FinalizationGroupSlots<ObjectInfo, Holdings, object>;
+    type Cell<Holdings> = FinalizationGroupCell<ObjectInfo, Holdings, object>;
+
+    type IteratorContext<Holdings> = {
+        cells: Iterable<Cell<Holdings>>;
+        group: FinalizationGroup<Holdings>;
+    };
+
+    function* getEmptyCells<Holdings>(context: {
+        finalized: Iterable<ObjectInfo> | undefined;
+        cellsForInfo: Map<ObjectInfo, Iterable<Cell<Holdings>>>;
+    }) {
+        for (const info of context.finalized!) {
+            const cells = context.cellsForInfo.get(info);
+            if (!cells) continue;
+            for (const cell of cells) {
+                if (!context.finalized) throw new TypeError();
+                yield cell;
+            }
+        }
+    }
+
+    const CleanupIterator: <Holdings>(
+        context: IteratorContext<Holdings>
+    ) => FinalizationGroup.CleanupIterator<
+        Holdings
+    > = function* CleanupIterator<Holdings>(
+        context: IteratorContext<Holdings>
+    ) {
+        for (const cell of context.cells) {
+            if (isAlive(cell.info)) continue;
+            const holding = cell.holdings;
+            unregisterCell(context.group, cell);
+            yield holding;
+        }
+    } as <Holdings>(
+        context: IteratorContext<Holdings>
+    ) => FinalizationGroup.CleanupIterator<Holdings>;
+
+    Object.defineProperty(
+        Object.getPrototypeOf(CleanupIterator.prototype),
+        Symbol.toStringTag,
+        {
+            value: "FinalizationGroup Cleanup Iterator",
+            configurable: true,
+        }
+    );
 
     function unregisterCell<Holdings>(
         group: FinalizationGroup<Holdings>,
-        cell: FinalizationGroupCell<ObjectInfo, Holdings, object>
+        cell: Cell<Holdings>
     ) {
         const slots = privates<Slots<Holdings>>(group);
         slots.cells.delete(cell);
@@ -126,56 +172,33 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
                 | FinalizationGroup.CleanupCallback<Holdings>
                 | undefined
         ): void {
-            const group = this;
-            const slots = privates<Slots<Holdings>>(group);
-            if (!cleanupCallback) {
+            let slots = privates<Slots<Holdings>>(this);
+            if (cleanupCallback === undefined) {
                 cleanupCallback = slots.cleanupCallback;
             } else if (typeof cleanupCallback != "function") {
                 throw new TypeError();
             }
 
-            const finalized = jobs.getFinalizedInFinalizationGroup(this);
-            if (finalized.size == 0) return;
-
-            let isFinalizationGroupCleanupJobActive = true;
-            function assertInsideCleanupJob() {
-                if (!isFinalizationGroupCleanupJobActive) {
-                    throw TypeError();
-                }
-            }
-
-            const iteratorFunction = function*() {
-                assertInsideCleanupJob();
-                for (const info of finalized) {
-                    const cells = slots.cellsForTarget.get(info);
-                    if (!cells) continue;
-                    for (const cell of cells) {
-                        if (isAlive(cell.info)) continue;
-                        const holding = cell.holdings;
-                        unregisterCell(group, cell);
-                        yield holding;
-                        assertInsideCleanupJob();
-                    }
-                }
+            const getEmptyCellsContext = {
+                finalized: jobs.getFinalizedInFinalizationGroup(this),
+                cellsForInfo: slots.cellsForTarget,
             };
 
-            Object.defineProperty(
-                Object.getPrototypeOf(iteratorFunction.prototype),
-                Symbol.toStringTag,
-                {
-                    value: "FinalizationGroup Cleanup Iterator",
-                    configurable: true,
-                }
-            );
+            if (getEmptyCellsContext.finalized.size == 0) return;
 
-            const iterator = iteratorFunction() as FinalizationGroup.CleanupIterator<
-                Holdings
-            >;
+            const cleanupIteratorContext = {
+                group: this,
+                cells: getEmptyCells(getEmptyCellsContext),
+            };
+
+            const iterator = CleanupIterator(cleanupIteratorContext);
 
             try {
                 cleanupCallback(iterator);
             } finally {
-                isFinalizationGroupCleanupJobActive = false;
+                cleanupIteratorContext.group = undefined!;
+                getEmptyCellsContext.finalized = undefined!;
+                getEmptyCellsContext.cellsForInfo = undefined!;
             }
         }
     }
