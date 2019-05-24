@@ -60,7 +60,6 @@ function getInfo(target: object) {
 function checkOnKnownObjects() {
     let previousKnownAliveObjectCount = knownAliveObjectsCount;
     let aliveObjects;
-    let finalizedInfos = new Set<ObjectInfo>();
     const previousFinalizeCount = knownFinalizeCount;
     knownFinalizeCount = finalizeCount();
 
@@ -90,8 +89,8 @@ function checkOnKnownObjects() {
             );
             for (const info of observedAliveInfos) {
                 if (aliveInfos.has(info)) continue;
-                finalizedInfos.add(info);
                 observedAliveInfos.delete(info);
+                finalizationGroupJobs.setFinalized(info);
             }
         }
     }
@@ -115,10 +114,6 @@ function checkOnKnownObjects() {
         clearTimeout(gcCheckTaskId);
         gcCheckTaskId = 0;
     }
-
-    if (finalizedInfos.size > 0) {
-        finalizationGroupJobs.setFinalized(...finalizedInfos);
-    }
 }
 
 const finalizationGroupJobs = createFinalizationGroupJobsForTaskQueue<
@@ -129,8 +124,8 @@ const finalizationGroupJobs = createFinalizationGroupJobsForTaskQueue<
         if (observedAliveInfos.size == 1) checkOnKnownObjects();
     },
     unregisterObjectInfo: info => {
-        observedAliveInfos.delete(info);
-        if (observedAliveInfos.size == 0) checkOnKnownObjects();
+        const wasObserved = observedAliveInfos.delete(info);
+        if (wasObserved && observedAliveInfos.size == 0) checkOnKnownObjects();
     },
 });
 
