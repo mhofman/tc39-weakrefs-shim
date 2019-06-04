@@ -14,21 +14,28 @@ export interface WeakRefsGetObjectInfo<ObjectInfo> {
 
 // Note: agent will hold FinalizationGroup instance until all registered targets have been collected
 
-class FinalizationGroupCell<ObjectInfo, Holdings, Token> {
+class FinalizationGroupCell<ObjectInfo, Holdings> {
     constructor(
         public readonly info: ObjectInfo,
         public readonly holdings: Holdings,
-        public readonly unregisterToken: Token | undefined
+        public readonly unregisterTokenSiblings:
+            | Set<FinalizationGroupCell<ObjectInfo, Holdings>>
+            | undefined
     ) {}
 }
 
-class FinalizationGroupSlots<ObjectInfo, Holdings, Token> {
-    readonly cells = new Set<
-        FinalizationGroupCell<ObjectInfo, Holdings, Token>
-    >();
+class FinalizationGroupSlots<
+    ObjectInfo,
+    Holdings,
+    Token extends object = object
+> {
     readonly cellsForTarget = new Map<
         ObjectInfo,
-        Set<FinalizationGroupCell<ObjectInfo, Holdings, Token>>
+        Set<FinalizationGroupCell<ObjectInfo, Holdings>>
+    >();
+    readonly cellsForToken = new WeakMap<
+        Token,
+        Set<FinalizationGroupCell<ObjectInfo, Holdings>>
     >();
     constructor(
         public readonly cleanupCallback: FinalizationGroup.CleanupCallback<
@@ -53,8 +60,8 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
         FinalizationGroup<any>
     >();
 
-    type Slots<Holdings> = FinalizationGroupSlots<ObjectInfo, Holdings, object>;
-    type Cell<Holdings> = FinalizationGroupCell<ObjectInfo, Holdings, object>;
+    type Slots<Holdings> = FinalizationGroupSlots<ObjectInfo, Holdings>;
+    type Cell<Holdings> = FinalizationGroupCell<ObjectInfo, Holdings>;
 
     type IteratorContext<Holdings> = {
         cells: Iterable<Cell<Holdings>>;
@@ -106,7 +113,10 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
         cell: Cell<Holdings>
     ) {
         const slots = privates<Slots<Holdings>>(group);
-        slots.cells.delete(cell);
+        if (cell.unregisterTokenSiblings) {
+            cell.unregisterTokenSiblings.delete(cell);
+        }
+
         const cellsForTarget = slots.cellsForTarget.get(cell.info)!;
         cellsForTarget.delete(cell);
         if (cellsForTarget.size == 0) {
@@ -140,27 +150,39 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
             const slots = privates<Slots<Holdings>>(this);
             const objectInfo = getInfo(target);
 
+            let cellsForToken;
+            if (unregisterToken) {
+                cellsForToken = slots.cellsForToken.get(unregisterToken);
+                if (!cellsForToken) {
+                    cellsForToken = new Set<Cell<Holdings>>();
+                    slots.cellsForToken.set(unregisterToken, cellsForToken);
+                }
+            }
+
             const cell = new FinalizationGroupCell(
                 objectInfo,
                 holdings,
-                unregisterToken
+                cellsForToken
             );
-            slots.cells.add(cell);
+
             let cellsForTarget = slots.cellsForTarget.get(objectInfo);
             if (!cellsForTarget) {
+                jobs.registerFinalizationGroup(this, objectInfo);
                 cellsForTarget = new Set();
                 slots.cellsForTarget.set(objectInfo, cellsForTarget);
-                jobs.registerFinalizationGroup(this, objectInfo);
             }
             cellsForTarget.add(cell);
+
+            if (cellsForToken) cellsForToken.add(cell);
         }
 
         unregister(unregisterToken: Token): boolean {
             if (!isObject(unregisterToken)) throw new TypeError();
             const slots = privates<Slots<Holdings>>(this);
             let removed = false;
-            for (const cell of slots.cells) {
-                if (cell.unregisterToken !== unregisterToken) continue;
+            const cellsForToken = slots.cellsForToken.get(unregisterToken);
+            if (!cellsForToken) return removed;
+            for (const cell of cellsForToken) {
                 unregisterCell(this, cell);
                 removed = true;
             }

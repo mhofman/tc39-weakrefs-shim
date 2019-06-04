@@ -229,6 +229,43 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         expect(holdings[1]).to.be.equal(42);
                         expect(holdings).to.have.lengthOf(2);
                     });
+
+                    it("doesn't hold a strong reference to the unregister token (optional)", async function() {
+                        const object = {};
+                        const callback = chai.spy();
+                        const finalizationGroup = new FinalizationGroup(
+                            callback
+                        );
+                        let token = {};
+                        finalizationGroup.register(object, 5, token);
+
+                        let tokenCollected = gcOf!(
+                            token,
+                            new Promise(resolve =>
+                                setTimeout(resolve, 400, false)
+                            )
+                        );
+                        token = undefined!;
+                        if (!(await tokenCollected)) this.skip();
+                    });
+
+                    it("can use the target as the unregister token (optional)", async function() {
+                        let object = {};
+                        const callback = chai.spy();
+                        const finalizationGroup = new FinalizationGroup(
+                            callback
+                        );
+                        finalizationGroup.register(object, 5, object);
+
+                        let collected = gcOf!(
+                            object,
+                            new Promise(resolve =>
+                                setTimeout(resolve, 400, false)
+                            )
+                        );
+                        object = undefined!;
+                        if (!(await collected)) this.skip();
+                    });
                 });
             } else {
                 it("collection behavior test disabled: no gc method");
