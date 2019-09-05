@@ -104,9 +104,7 @@ function checkOnKnownObjects() {
 
     if (observedAliveInfos.size > 0) {
         if (start || previousFinalizeCount != knownFinalizeCount) {
-            // Make sure the special object stays alive a little
-            const marker = makeFinalizeObserver();
-            new WeakRef(marker);
+            getInfo(makeFinalizeObserver());
         }
 
         gcCheckTaskId = setTimeout(checkOnKnownObjects, gcCheckInterval);
