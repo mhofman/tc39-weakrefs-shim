@@ -1,142 +1,97 @@
 import { setImmediate } from "../src/utils/tasks/setImmediate.js";
-import { available as weakrefsAvailable } from "../src/index.js";
-import globalWeakrefsAvailable from "../src/global/available.js";
-import nodeStubAvailable from "../src/node/available.js";
 
 import { FinalizationGroup } from "../src/weakrefs.js";
 
-declare const gc: () => void;
-
-type Holdings = (collected: true) => void;
-
-function taskTurn(): Promise<undefined> {
+export function clearKeptObjects(): Promise<undefined> {
     return new Promise(resolve => setImmediate(resolve));
 }
 
-function makeObserver(): [Promise<true>, Holdings] {
-    let resolve: Holdings;
-    const collected = new Promise<true>(r => void (resolve = r));
-    return [collected, resolve!];
+/**
+ * Trigger an asynchronous garbage collection and wait until a target is collected
+ *
+ * The garbage collection is never executed synchronously. It is performed
+ * on the next micro-task of after a user-specified trigger.
+ *
+ * The function completes after the garbage collection was performed.
+ *
+ * @remarks
+ * The function verifies collection immediately after triggering collection
+ * and will complete without the microtask queue draining.
+ *
+ * @param target - The object whose collection to determine. If not provided,
+ *                 collection is determined by a placeholder object.
+ * @param trigger - Wait for the specified trigger before triggering collection.
+ *                  If not provided, collection is triggered on the next microtask.
+ * @returns `true` if the target was collected, `false` if it wasn't
+ * @throws         if collection couldn't be performed
+ */
+export interface AsyncGc {
+    (target?: object, trigger?: Promise<any>): Promise<boolean>;
 }
 
-export function getTimeoutCanceller(timeout: number): Promise<false> {
-    return new Promise(resolve => setTimeout(() => resolve(false), timeout));
-}
-
-export function makeGcOf(
-    gc: () => void,
+export function makeAsyncGc(
+    gc: () => Promise<any> | void,
     FinalizationGroup: FinalizationGroup.Constructor
-) {
-    const finalizationGroup = new FinalizationGroup<Holdings>(resolvers => {
-        for (const resolve of resolvers) {
-            resolve(true);
+): AsyncGc | undefined {
+    type Holdings = { collected: boolean };
+
+    function makeFinalizationGroup() {
+        try {
+            return new FinalizationGroup<Holdings>(holdings => {
+                for (const holding of holdings) {
+                    holding.collected = true;
+                }
+            });
+        } catch (error) {
+            return undefined;
         }
-    });
+    }
 
-    return async function gcOfWithCancellation(
-        target?: object,
-        cancelPromise?: Promise<false>
-    ): Promise<boolean> {
-        // Avoid creating a closure which may captures target
-        const [collected, holding] = makeObserver();
-        finalizationGroup.register(target || {}, holding);
-        target = undefined;
+    const finalizationGroup = makeFinalizationGroup();
 
-        // Need to run gc on next task, as it often cannot run multiple times per task
-        // Also need to allow caller to remove its own target references before calling gc
-        await taskTurn();
-        gc();
-        const result = await Promise.race(
-            cancelPromise ? [collected, cancelPromise] : [collected]
-        );
+    return !finalizationGroup
+        ? undefined
+        : function asyncGc(
+              target?: object,
+              trigger?: Promise<any>
+          ): Promise<boolean> {
+              let checker = {};
 
-        // Make sure the client's finalization own callback has been called
-        await taskTurn();
+              const checkerHolding = {
+                  collected: false,
+              };
 
-        return result;
-    };
+              const holding =
+                  target != null ? { collected: false } : checkerHolding;
+              finalizationGroup.register(target || checker, holding, holding);
+              finalizationGroup.register(
+                  checker,
+                  checkerHolding,
+                  checkerHolding
+              );
+
+              target = checker = undefined!;
+
+              return Promise.resolve(trigger)
+                  .then(() => {
+                      // gc() may return a promise that signals asynchronous completion
+                      return gc();
+                  })
+                  .then(() => {
+                      try {
+                          finalizationGroup.cleanupSome();
+
+                          finalizationGroup.unregister(checkerHolding);
+                          finalizationGroup.unregister(holding);
+                      } catch (err) {}
+
+                      if (!checkerHolding.collected) {
+                          return Promise.reject(
+                              new Error("Couldn't collect checker")
+                          );
+                      }
+
+                      return holding.collected;
+                  });
+          };
 }
-
-export function makeAggressiveGcOf(
-    gc: () => void,
-    FinalizationGroup: FinalizationGroup.Constructor
-) {
-    const finalizationGroup = new FinalizationGroup<Holdings>(resolvers => {
-        for (const resolve of resolvers) {
-            resolve(true);
-        }
-    });
-
-    return async function gcOfWithCancellation(
-        target?: object,
-        cancelPromise?: Promise<false>
-    ): Promise<boolean> {
-        const [collected, holding] = makeObserver();
-        finalizationGroup.register(target || {}, holding);
-        target = undefined;
-
-        let result: boolean | undefined;
-        // Careful to no move the await into the while body
-        // see https://bugs.chromium.org/p/v8/issues/detail?id=9101
-        while (
-            (result = await Promise.race(
-                cancelPromise
-                    ? [collected, cancelPromise, taskTurn()]
-                    : [collected, taskTurn()]
-            )) === undefined
-        ) {
-            gc();
-        }
-
-        // Make sure the client's finalization own callback has been called
-        await taskTurn();
-
-        return result;
-    };
-}
-
-export function gcTask() {
-    return new Promise<void>(resolve =>
-        setImmediate(() => {
-            if (gcAvailable) gc();
-            resolve();
-        })
-    );
-}
-
-export const gcAvailable = typeof gc == "function";
-
-const globalGc = gcAvailable ? gc : undefined;
-export { globalGc as gc };
-
-// Uses any shim available
-export const gcOfPromise =
-    gcAvailable && weakrefsAvailable
-        ? (async () => {
-              const { FinalizationGroup } = await import("../src/index.js");
-
-              return makeGcOf(gc, FinalizationGroup);
-          })()
-        : undefined;
-
-// Uses the primitives of the platform
-// Or the shim if available
-export const gcOfRawPromise =
-    weakrefsAvailable && gcAvailable
-        ? (async () => {
-              let weakrefs;
-              if (globalWeakrefsAvailable) {
-                  weakrefs = import("../src/global/index.js");
-              } else if (nodeStubAvailable) {
-                  weakrefs = import("../src/node/stub.js");
-              } else if (weakrefsAvailable) {
-                  weakrefs = import("../src/index.js");
-              } else {
-                  throw new Error("Implementation not available");
-              }
-
-              const { FinalizationGroup } = await weakrefs;
-
-              return makeGcOf(gc, FinalizationGroup);
-          })()
-        : undefined;

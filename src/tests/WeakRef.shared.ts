@@ -1,5 +1,9 @@
 import { before, expect, describe, beforeEach, it } from "../../tests/setup.js";
-import { makeGcOf } from "../../tests/collector-helper.js";
+import {
+    makeAsyncGc,
+    clearKeptObjects,
+    AsyncGc,
+} from "../../tests/collector-helper.js";
 import { expectThrowIfNotObject } from "./FinalizationGroup.shared.js";
 
 import { FinalizationGroup, WeakRef } from "../weakrefs.js";
@@ -14,20 +18,21 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
     skip = false
 ): void {
     (!skip ? describe : describe.skip)("WeakRef", function() {
-        let gcOf: (target?: object) => Promise<boolean>;
+        let gcOf: AsyncGc;
         let WeakRef: WeakRef.Constructor;
         let FinalizationGroup: FinalizationGroup.Constructor | undefined;
-        let gc: (() => void) | undefined;
+        let gc: (() => Promise<void> | void) | undefined;
 
         before(async function() {
             ({ WeakRef, FinalizationGroup, gc } = await details);
         });
 
         beforeEach(function() {
+            const skip = () => this.skip();
             if (gc && FinalizationGroup) {
-                gcOf = makeGcOf(gc, FinalizationGroup);
+                gcOf = makeAsyncGc(gc, FinalizationGroup) || skip;
             } else {
-                gcOf = () => this.skip();
+                gcOf = skip;
             }
         });
 
@@ -73,15 +78,16 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
             it("should return undefined if target collected (direct observe)", async function() {
                 let object = {};
                 const weakRef = new WeakRef(object);
-                const collected = gcOf(object);
+                const collected = gcOf(object, clearKeptObjects());
                 object = undefined!;
-                await collected;
+                if ((await collected) === false) this.skip();
                 expect(weakRef.deref()).to.be.equal(undefined);
             });
 
             it("should return undefined if target collected (indirect observe)", async function() {
                 const weakRef = new WeakRef({});
-                await gcOf();
+                const collected = gcOf(undefined, clearKeptObjects());
+                if ((await collected) === false) this.skip();
                 expect(weakRef.deref()).to.be.equal(undefined);
             });
         });
