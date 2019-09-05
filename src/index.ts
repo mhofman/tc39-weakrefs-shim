@@ -11,11 +11,12 @@ function testKnownImplementationIssues(
     try {
         const finalizationGroup = new FinalizationGroup(() => {});
         if (finalizationGroup.unregister({}) !== false) return false;
-        let called = false;
-        finalizationGroup.cleanupSome(() => {
-            called = true;
-        });
-        if (!called) return false;
+        // TBD: Figure out how to test for broken cleanupSome
+        // let called = false;
+        // finalizationGroup.cleanupSome(() => {
+        //     called = true;
+        // });
+        // if (!called) return false;
     } catch (err) {
         return false;
     }

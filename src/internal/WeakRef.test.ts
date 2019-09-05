@@ -2,24 +2,25 @@ import { describe, it, expect, beforeEach, chai } from "../../tests/setup.js";
 
 import { createWeakRefClassShim } from "./WeakRef.js";
 
-import { AgentMock, ObjectInfoMock } from "./Agent.mock.js";
+import { ObjectInfoMock } from "./ObjectInfo.mock.js";
+import { WeakRefJobsMock } from "./WeakRefJobs.mock.js";
 import { expectThrowIfNotObject } from "../tests/FinalizationGroup.shared.js";
 
 import { WeakRef } from "../weakrefs.js";
 
 describe("WeakRefShim", function() {
     let objectMap: Map<object, ObjectInfoMock>;
-    let agent: AgentMock<ObjectInfoMock>;
+    let jobs: WeakRefJobsMock<ObjectInfoMock>;
     let getInfo: ChaiSpies.SpyFunc1<object, ObjectInfoMock>;
     let getTarget: ChaiSpies.SpyFunc1<ObjectInfoMock, object | undefined>;
     let WeakRef: WeakRef.Constructor;
 
     beforeEach(function() {
         objectMap = new Map();
-        agent = new AgentMock();
+        jobs = new WeakRefJobsMock();
         getInfo = chai.spy((object: object) => objectMap.get(object)!);
         getTarget = chai.spy((info: ObjectInfoMock) => info.target);
-        [WeakRef] = createWeakRefClassShim(agent, getInfo, getTarget);
+        [WeakRef] = createWeakRefClassShim(jobs, getInfo, getTarget);
     });
 
     describe("constructor", function() {
@@ -51,8 +52,8 @@ describe("WeakRefShim", function() {
             const object = {};
             objectMap.set(object, new ObjectInfoMock(object));
             new WeakRef(object);
-            expect(agent.keepDuringJob).to.have.been.called.once;
-            expect(agent.keepDuringJob).to.have.been.called.with(object);
+            expect(jobs.keepDuringJob).to.have.been.called.once;
+            expect(jobs.keepDuringJob).to.have.been.called.with(object);
         });
     });
 
@@ -72,10 +73,10 @@ describe("WeakRefShim", function() {
             const object = {};
             objectMap.set(object, new ObjectInfoMock(object));
             const weakRef = new WeakRef(object);
-            expect(agent.keepDuringJob).to.have.been.called.once;
+            expect(jobs.keepDuringJob).to.have.been.called.once;
             expect(weakRef.deref()).to.be.equal(object);
-            expect(agent.keepDuringJob).to.have.been.called.twice;
-            expect(agent.keepDuringJob).to.have.been.second.called.with(object);
+            expect(jobs.keepDuringJob).to.have.been.called.twice;
+            expect(jobs.keepDuringJob).to.have.been.second.called.with(object);
         });
 
         it("should ask for the target", async function() {
@@ -92,10 +93,10 @@ describe("WeakRefShim", function() {
             const info = new ObjectInfoMock(object);
             objectMap.set(object, info);
             const weakRef = new WeakRef(object);
-            expect(agent.keepDuringJob).to.have.been.called.once;
+            expect(jobs.keepDuringJob).to.have.been.called.once;
             info.target = undefined;
             expect(weakRef.deref()).to.be.equal(undefined);
-            expect(agent.keepDuringJob).to.have.been.called.once;
+            expect(jobs.keepDuringJob).to.have.been.called.once;
         });
     });
 
@@ -120,9 +121,9 @@ describe("WeakRefShim", function() {
         objectMap.set(object, new ObjectInfoMock(object));
         const releasableWeakRef = new ReleasableWeakRef(object);
 
-        expect(agent.keepDuringJob).to.have.been.called.once;
+        expect(jobs.keepDuringJob).to.have.been.called.once;
         releasableWeakRef.release();
         expect(releasableWeakRef.deref()).to.not.exist;
-        expect(agent.keepDuringJob).to.have.been.called.once;
+        expect(jobs.keepDuringJob).to.have.been.called.once;
     });
 });

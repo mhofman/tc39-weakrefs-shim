@@ -15,8 +15,9 @@ execute(
     [
         "../../../src/utils/tasks/taskQueue.test.js",
         "../../../src/index.test.js",
-        "../../../src/internal/Agent.test.js",
+        "../../../src/internal/FinalizationGroupJobs.test.js",
         "../../../src/internal/FinalizationGroup.test.js",
+        "../../../src/internal/WeakRefJobs.test.js",
         "../../../src/internal/WeakRef.test.js",
         "../../../src/wrapper.test.js",
         "../../../src/spidermonkey/internal.test.js",

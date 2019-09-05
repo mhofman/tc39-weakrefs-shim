@@ -1,6 +1,6 @@
 import makePrivates from "../utils/privates.js";
 import isObject from "../utils/lodash/isObject.js";
-import { Agent } from "./Agent.js";
+import { FinalizationGroupJobs } from "./FinalizationGroupJobs.js";
 
 import { FinalizationGroup } from "../weakrefs.js";
 
@@ -26,7 +26,10 @@ class FinalizationGroupSlots<ObjectInfo, Holdings, Token> {
     readonly cells = new Set<
         FinalizationGroupCell<ObjectInfo, Holdings, Token>
     >();
-    readonly cellsPerTarget = new Map<ObjectInfo, number>();
+    readonly cellsForTarget = new Map<
+        ObjectInfo,
+        Set<FinalizationGroupCell<ObjectInfo, Holdings, Token>>
+    >();
     constructor(
         public readonly cleanupCallback: FinalizationGroup.CleanupCallback<
             Holdings
@@ -35,9 +38,12 @@ class FinalizationGroupSlots<ObjectInfo, Holdings, Token> {
 }
 
 export function createFinalizationGroupClassShim<ObjectInfo>(
-    agent: Pick<
-        Agent<ObjectInfo>,
-        "registerFinalizationGroup" | "unregisterFinalizationGroup"
+    jobs: Pick<
+        FinalizationGroupJobs<ObjectInfo>,
+        | "registerFinalizationGroup"
+        | "unregisterFinalizationGroup"
+        | "checkForEmptyCells"
+        | "getFinalizedInFinalizationGroup"
     >,
     getInfo: WeakRefsGetObjectInfo<ObjectInfo>,
     isAlive: WeakRefsObjectInfoIsAlive<ObjectInfo>
@@ -55,12 +61,11 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
     ) {
         const slots = privates<Slots<Holdings>>(group);
         slots.cells.delete(cell);
-        const cellsForTarget = slots.cellsPerTarget.get(cell.info)! - 1;
-        if (!cellsForTarget) {
-            slots.cellsPerTarget.delete(cell.info);
-            agent.unregisterFinalizationGroup(group, cell.info);
-        } else {
-            slots.cellsPerTarget.set(cell.info, cellsForTarget);
+        const cellsForTarget = slots.cellsForTarget.get(cell.info)!;
+        cellsForTarget.delete(cell);
+        if (cellsForTarget.size == 0) {
+            slots.cellsForTarget.delete(cell.info);
+            jobs.unregisterFinalizationGroup(group, cell.info);
         }
     }
 
@@ -89,14 +94,19 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
             const slots = privates<Slots<Holdings>>(this);
             const objectInfo = getInfo(target);
 
-            slots.cells.add(
-                new FinalizationGroupCell(objectInfo, holdings, unregisterToken)
+            const cell = new FinalizationGroupCell(
+                objectInfo,
+                holdings,
+                unregisterToken
             );
-            const cellsForTarget = slots.cellsPerTarget.get(objectInfo) || 0;
+            slots.cells.add(cell);
+            let cellsForTarget = slots.cellsForTarget.get(objectInfo);
             if (!cellsForTarget) {
-                agent.registerFinalizationGroup(this, objectInfo);
+                cellsForTarget = new Set();
+                slots.cellsForTarget.set(objectInfo, cellsForTarget);
+                jobs.registerFinalizationGroup(this, objectInfo);
             }
-            slots.cellsPerTarget.set(objectInfo, cellsForTarget + 1);
+            cellsForTarget.add(cell);
         }
 
         unregister(unregisterToken: Token): boolean {
@@ -124,6 +134,9 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
                 throw new TypeError();
             }
 
+            const finalized = jobs.getFinalizedInFinalizationGroup(this);
+            if (finalized.size == 0) return;
+
             let isFinalizationGroupCleanupJobActive = true;
             function assertInsideCleanupJob() {
                 if (!isFinalizationGroupCleanupJobActive) {
@@ -133,12 +146,16 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
 
             const iteratorFunction = function*() {
                 assertInsideCleanupJob();
-                for (const cell of slots.cells) {
-                    if (isAlive(cell.info)) continue;
-                    const holding = cell.holdings;
-                    unregisterCell(group, cell);
-                    yield holding;
-                    assertInsideCleanupJob();
+                for (const info of finalized) {
+                    const cells = slots.cellsForTarget.get(info);
+                    if (!cells) continue;
+                    for (const cell of cells) {
+                        if (isAlive(cell.info)) continue;
+                        const holding = cell.holdings;
+                        unregisterCell(group, cell);
+                        yield holding;
+                        assertInsideCleanupJob();
+                    }
                 }
             };
 

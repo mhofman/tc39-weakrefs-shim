@@ -8,7 +8,7 @@
       "runtimeArgs": [
         "--expose-gc",
         "--require", "esm",
-        "--require", "${workspaceFolder}/tests/setup.node.js",
+        "--require", "${workspaceFolder}/tests/setup.node.cjs",
          ],
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "args": [

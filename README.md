@@ -150,6 +150,8 @@ A new implementation should leverage the internal API to create the `WeakRef` an
 
 ### Internal API
 
+**Note:** This section is not up-to-date with the current implementation
+
 #### Abstract types and operations
 
 -   `type ObjectInfo`\

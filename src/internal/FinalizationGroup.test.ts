@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, chai } from "../../tests/setup.js";
 import { merge } from "../utils/set.js";
 import { createFinalizationGroupClassShim } from "./FinalizationGroup.js";
-import { AgentMock, ObjectInfoMock } from "./Agent.mock.js";
+import { ObjectInfoMock } from "./ObjectInfo.mock.js";
+import { FinalizationGroupJobsMock } from "./FinalizationGroupJobs.mock.js";
 import {
     expectThrowIfNotObject,
     shouldBehaveAsCleanupJopAccordingToSpec,
@@ -12,7 +13,7 @@ import { FinalizationGroup } from "../weakrefs.js";
 describe("FinalizationGroupShim", function() {
     type Holding = number;
     let objectMap: Map<object, ObjectInfoMock>;
-    let agent: AgentMock<ObjectInfoMock>;
+    let jobs: FinalizationGroupJobsMock<ObjectInfoMock>;
     let getInfo: ChaiSpies.SpyFunc1<object, ObjectInfoMock>;
     let isAlive: ChaiSpies.SpyFunc1<ObjectInfoMock, boolean>;
     let FinalizationGroup: FinalizationGroup.Constructor;
@@ -21,11 +22,19 @@ describe("FinalizationGroupShim", function() {
 
     beforeEach(function() {
         objectMap = new Map();
-        agent = new AgentMock();
+        jobs = new FinalizationGroupJobsMock(
+            chai.spy((fg: FinalizationGroup<Holding>) => {
+                const finalized = new Set();
+                for (const info of objectMap.values()) {
+                    if (!info.target) finalized.add(info);
+                }
+                return finalized;
+            })
+        );
         getInfo = chai.spy((object: object) => objectMap.get(object)!);
         isAlive = chai.spy((info: ObjectInfoMock) => !!info.target);
         FinalizationGroup = createFinalizationGroupClassShim(
-            agent,
+            jobs,
             getInfo,
             isAlive
         );
@@ -84,12 +93,12 @@ describe("FinalizationGroupShim", function() {
             const info = new ObjectInfoMock(object);
             objectMap.set(object, info);
             finalizationGroup.register(object, 0);
-            expect(agent.registerFinalizationGroup).to.have.been.called.with(
+            expect(jobs.registerFinalizationGroup).to.have.been.called.with(
                 finalizationGroup,
                 info
             );
             expect(() => finalizationGroup.register(object, 1)).not.to.throw();
-            expect(agent.registerFinalizationGroup).to.have.been.called.once;
+            expect(jobs.registerFinalizationGroup).to.have.been.called.once;
         });
 
         describe("collection behavior", function() {
@@ -102,7 +111,7 @@ describe("FinalizationGroupShim", function() {
                 finalizationGroup.cleanupSome();
                 expect(isAlive).to.have.been.called.with(info);
                 expect(
-                    agent.unregisterFinalizationGroup
+                    jobs.unregisterFinalizationGroup
                 ).to.have.been.called.with(finalizationGroup, info);
                 expect(recentlyFinalized).to.have.lengthOf(1);
                 expect(recentlyFinalized).to.contain(1);
@@ -119,10 +128,10 @@ describe("FinalizationGroupShim", function() {
                 infos[1].target = infos[2].target = undefined;
                 finalizationGroup.cleanupSome();
                 expect(
-                    agent.unregisterFinalizationGroup
+                    jobs.unregisterFinalizationGroup
                 ).to.have.been.called.with(finalizationGroup, infos[1]);
                 expect(
-                    agent.unregisterFinalizationGroup
+                    jobs.unregisterFinalizationGroup
                 ).to.have.been.called.with(finalizationGroup, infos[2]);
                 expect(recentlyFinalized).to.have.lengthOf(2);
                 expect(recentlyFinalized).to.contain(1);
@@ -137,10 +146,10 @@ describe("FinalizationGroupShim", function() {
                 finalizationGroup.register(object, 2);
                 info.target = undefined;
                 finalizationGroup.cleanupSome();
-                expect(agent.unregisterFinalizationGroup).to.have.been.called
+                expect(jobs.unregisterFinalizationGroup).to.have.been.called
                     .once;
                 expect(
-                    agent.unregisterFinalizationGroup
+                    jobs.unregisterFinalizationGroup
                 ).to.have.been.called.with(finalizationGroup, info);
                 expect(recentlyFinalized).to.have.lengthOf(2);
                 expect(recentlyFinalized).to.contain(1);
@@ -155,10 +164,10 @@ describe("FinalizationGroupShim", function() {
                 finalizationGroup.register(object, 42);
                 info.target = undefined;
                 finalizationGroup.cleanupSome();
-                expect(agent.unregisterFinalizationGroup).to.have.been.called
+                expect(jobs.unregisterFinalizationGroup).to.have.been.called
                     .once;
                 expect(
-                    agent.unregisterFinalizationGroup
+                    jobs.unregisterFinalizationGroup
                 ).to.have.been.called.with(finalizationGroup, info);
                 expect(recentlyFinalized[0]).to.be.equal(42);
                 expect(recentlyFinalized[1]).to.be.equal(42);
@@ -218,12 +227,12 @@ describe("FinalizationGroupShim", function() {
                 return info;
             });
             expect(finalizationGroup.unregister(token)).to.be.true;
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.twice;
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.with(
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.twice;
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.with(
                 finalizationGroup,
                 infos[0]
             );
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.with(
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.with(
                 finalizationGroup,
                 infos[2]
             );
@@ -319,32 +328,25 @@ describe("FinalizationGroupShim", function() {
             );
         });
 
-        it("should not call the callback given at constructor if one is provided", async function() {
-            const callback = chai.spy();
-            const constructorCallback = chai.spy();
-            const finalizationGroup = new FinalizationGroup(
-                constructorCallback
-            );
-            finalizationGroup.cleanupSome(callback);
-            expect(constructorCallback).to.not.have.been.called();
-            expect(callback).to.have.been.called();
-        });
-
-        shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
-            finalizationGroup.cleanupSome(cleanupCallback);
-        });
-
         describe("collection behavior", function() {
-            it("should yield previously finalized cells", async function() {
+            let constructorCallback: ChaiSpies.SpyFunc1<
+                FinalizationGroup.CleanupIterator<Holding>,
+                void
+            >;
+
+            beforeEach(function() {
                 let object = {};
                 const info = new ObjectInfoMock(object);
                 objectMap.set(object, info);
-                const callback = chai.spy();
-                const finalizationGroup = new FinalizationGroup(callback);
+                constructorCallback = chai.spy();
+                finalizationGroup = new FinalizationGroup(constructorCallback);
                 finalizationGroup.register(object, 42);
                 info.target = undefined;
+            });
+
+            it("should yield previously finalized cells", async function() {
                 finalizationGroup.cleanupSome();
-                expect(callback).to.have.been.called();
+                expect(constructorCallback).to.have.been.called();
                 let holdings: Array<number>;
                 expect(
                     finalizationGroup.cleanupSome(items => {
@@ -354,18 +356,21 @@ describe("FinalizationGroupShim", function() {
                 expect(holdings!).to.contain(42);
                 expect(holdings!).to.have.lengthOf(1);
             });
+
+            it("should not call the callback given at constructor if one is provided", async function() {
+                const callback = chai.spy();
+                finalizationGroup.cleanupSome(callback);
+                expect(constructorCallback).to.not.have.been.called();
+                expect(callback).to.have.been.called();
+            });
+
+            shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
+                finalizationGroup.cleanupSome(cleanupCallback);
+            });
         });
     });
 
     describe("iterator", function() {
-        it("should not yield any holding if nothing finalized", async function() {
-            finalizationGroup.cleanupSome(items => {
-                const result = items.next();
-                expect(result.done).to.be.true;
-                expect(result.value).to.be.equal(undefined);
-            });
-        });
-
         describe("collection behavior", function() {
             it("doesn't remove cell if iterator not consumed", async function() {
                 let object = {};
@@ -461,15 +466,15 @@ describe("FinalizationGroupShim", function() {
             );
             infos[0].target = infos[1].target = undefined;
             expect(finalizationGroup.unregister(tokens[0])).to.be.true;
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.once;
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.with(
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.once;
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.with(
                 finalizationGroup,
                 infos[0]
             );
             finalizationGroup.cleanupSome();
             expect(recentlyFinalized).to.have.lengthOf(1);
             expect(recentlyFinalized).to.contain(infos[1]);
-            expect(agent.unregisterFinalizationGroup).to.have.been.called.with(
+            expect(jobs.unregisterFinalizationGroup).to.have.been.called.with(
                 finalizationGroup,
                 infos[1]
             );

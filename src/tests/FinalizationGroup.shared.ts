@@ -378,13 +378,13 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 ).to.throw();
             });
 
-            it("should call callback even when no empty cell", async function() {
-                const finalizationGroup = new FinalizationGroup(() => {});
-                workingCleanupSome = false;
-                finalizationGroup.cleanupSome(
-                    () => (workingCleanupSome = true)
-                );
-                expect(workingCleanupSome).to.be.true;
+            it("should not call callback when no empty cell", async function() {
+                let object = {};
+                const callback = chai.spy();
+                const finalizationGroup = new FinalizationGroup(callback);
+                finalizationGroup.register(object, 42);
+                finalizationGroup.cleanupSome();
+                expect(callback).not.to.have.been.called();
             });
 
             describe("should throw when called with non-object", function() {
@@ -415,36 +415,28 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 );
             });
 
-            it("should not call the callback given at constructor if one is provided", async function() {
-                const callback = chai.spy();
-                const constructorCallback = chai.spy();
-                const finalizationGroup = new FinalizationGroup(
-                    constructorCallback
-                );
-                finalizationGroup.cleanupSome(callback);
-                expect(constructorCallback).to.not.have.been.called();
-                if (workingCleanupSome) expect(callback).to.have.been.called();
-            });
-
-            shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
-                if (!workingCleanupSome) this.skip();
-                const finalizationGroup = new FinalizationGroup(() => {});
-                finalizationGroup.cleanupSome(cleanupCallback);
-            });
-
             if (gcAvailable) {
                 describe("collection behavior", function() {
-                    it("should yield previously finalized cells", async function() {
+                    let constructorCallback: ChaiSpies.SpyFunc1<
+                        FinalizationGroup.CleanupIterator<number>,
+                        void
+                    >;
+                    let finalizationGroup: FinalizationGroup<number>;
+
+                    beforeEach(async function() {
                         let object = {};
-                        const callback = chai.spy();
-                        const finalizationGroup = new FinalizationGroup(
-                            callback
+                        constructorCallback = chai.spy();
+                        finalizationGroup = new FinalizationGroup(
+                            constructorCallback
                         );
                         finalizationGroup.register(object, 42);
                         const collected = gcOf!(object);
                         object = undefined!;
                         await collected;
-                        expect(callback).to.have.been.called();
+                        expect(constructorCallback).to.have.been.called.once;
+                    });
+
+                    it("should yield previously finalized cells", async function() {
                         let holdings: Array<number>;
                         workingCleanupSome = false;
                         expect(
@@ -457,6 +449,21 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         expect(holdings!).to.contain(42);
                         expect(holdings!).to.have.lengthOf(1);
                     });
+
+                    it("should not call the callback given at constructor if one is provided", async function() {
+                        const callback = chai.spy();
+                        finalizationGroup.cleanupSome(callback);
+                        expect(constructorCallback).to.have.been.called.once;
+                        if (workingCleanupSome)
+                            expect(callback).to.have.been.called();
+                    });
+
+                    shouldBehaveAsCleanupJopAccordingToSpec(function(
+                        cleanupCallback
+                    ) {
+                        if (!workingCleanupSome) this.skip();
+                        finalizationGroup.cleanupSome(cleanupCallback);
+                    });
                 });
             } else {
                 it("collection behavior test disabled: no gc method");
@@ -464,16 +471,6 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("iterator", function() {
-            it("should not yield any holding if nothing finalized", async function() {
-                const finalizationGroup = new FinalizationGroup(() => {});
-                if (!workingCleanupSome) this.skip();
-                finalizationGroup.cleanupSome(items => {
-                    const result = items.next();
-                    expect(result.done).to.be.true;
-                    expect(result.value).to.be.equal(undefined);
-                });
-            });
-
             if (gcAvailable) {
                 describe("collection behavior", function() {
                     it("doesn't remove cell if iterator not consumed", async function() {
@@ -623,7 +620,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         }
                     );
 
-                    shouldBehaveAsCleanupJopAccordingToSpec(function(
+                    shouldBehaveAsCleanupJopAccordingToSpec(async function(
                         cleanupCallback
                     ) {
                         let object = {};
@@ -633,7 +630,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         finalizationGroup.register(object, 42);
                         const collected = gcOf!(object);
                         object = undefined!;
-                        return collected;
+                        await collected;
                     });
                 });
             } else {
