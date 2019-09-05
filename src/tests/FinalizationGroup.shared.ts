@@ -548,8 +548,10 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                     it("doesn't remove cell if iterator is closed before", async function() {
                         const holdings = [{}, {}];
                         let notIterated: object | undefined;
+                        let invocations = 0;
                         const finalizationGroup = new FinalizationGroup<object>(
                             items => {
+                                invocations++;
                                 for (const item of items) {
                                     notIterated = item;
                                     expect(holdings).to.contain(notIterated);
@@ -572,7 +574,9 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         object = undefined!;
                         await collected;
                         expect(notIterated).to.be.ok;
-                        if (unregisterReturnsBool) {
+                        if (invocations > 1) {
+                            this.skip();
+                        } else if (unregisterReturnsBool) {
                             expect(finalizationGroup.unregister(notIterated!))
                                 .to.be.true;
                         } else if (workingCleanupSome) {

@@ -7,8 +7,16 @@ import { FinalizationGroup } from "../src/weakrefs.js";
 
 declare const gc: () => void;
 
+type Holdings = (collected: true) => void;
+
 function taskTurn(): Promise<undefined> {
     return new Promise(resolve => setImmediate(resolve));
+}
+
+function makeObserver(): [Promise<true>, Holdings] {
+    let resolve: Holdings;
+    const collected = new Promise<true>(r => void (resolve = r));
+    return [collected, resolve!];
 }
 
 export function getTimeoutCanceller(timeout: number): Promise<false> {
@@ -19,33 +27,33 @@ export function makeGcOf(
     gc: () => void,
     FinalizationGroup: FinalizationGroup.Constructor
 ) {
-    function makeObserver(): [Promise<true>, FinalizationGroup<any>] {
-        let resolve: (collected: true) => void;
-        const collected = new Promise<true>(r => (resolve = r));
-        const finalizationGroup = new FinalizationGroup<any>(items => {
-            // Let's be nice and cleanup
-            [...items];
+    const finalizationGroup = new FinalizationGroup<Holdings>(resolvers => {
+        for (const resolve of resolvers) {
             resolve(true);
-        });
-        return [collected, finalizationGroup];
-    }
+        }
+    });
 
     return async function gcOfWithCancellation(
         target?: object,
         cancelPromise?: Promise<false>
     ): Promise<boolean> {
         // Avoid creating a closure which may captures target
-        const [collected, finalizationGroup] = makeObserver();
-        finalizationGroup.register(target || {}, 0);
+        const [collected, holding] = makeObserver();
+        finalizationGroup.register(target || {}, holding);
         target = undefined;
 
         // Need to run gc on next task, as it often cannot run multiple times per task
         // Also need to allow caller to remove its own target references before calling gc
         await taskTurn();
         gc();
-        return await Promise.race(
+        const result = await Promise.race(
             cancelPromise ? [collected, cancelPromise] : [collected]
         );
+
+        // Make sure the client's finalization own callback has been called
+        await taskTurn();
+
+        return result;
     };
 }
 
@@ -53,23 +61,18 @@ export function makeAggressiveGcOf(
     gc: () => void,
     FinalizationGroup: FinalizationGroup.Constructor
 ) {
-    function makeObserver(): [Promise<true>, FinalizationGroup<any>] {
-        let resolve: (collected: true) => void;
-        const collected = new Promise<true>(r => (resolve = r));
-        const finalizationGroup = new FinalizationGroup<any>(items => {
-            // Let's be nice and cleanup
-            [...items];
+    const finalizationGroup = new FinalizationGroup<Holdings>(resolvers => {
+        for (const resolve of resolvers) {
             resolve(true);
-        });
-        return [collected, finalizationGroup];
-    }
+        }
+    });
 
     return async function gcOfWithCancellation(
         target?: object,
         cancelPromise?: Promise<false>
     ): Promise<boolean> {
-        const [collected, finalizationGroup] = makeObserver();
-        finalizationGroup.register(target || {}, 0);
+        const [collected, holding] = makeObserver();
+        finalizationGroup.register(target || {}, holding);
         target = undefined;
 
         let result: boolean | undefined;
@@ -84,6 +87,9 @@ export function makeAggressiveGcOf(
         ) {
             gc();
         }
+
+        // Make sure the client's finalization own callback has been called
+        await taskTurn();
 
         return result;
     };
