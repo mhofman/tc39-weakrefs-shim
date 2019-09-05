@@ -230,7 +230,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         expect(holdings).to.have.lengthOf(2);
                     });
 
-                    it("doesn't hold a strong reference to the unregister token (optional)", async function() {
+                    it("doesn't hold a strong reference to the unregister token", async function() {
                         const object = {};
                         const callback = chai.spy();
                         const finalizationGroup = new FinalizationGroup(
@@ -246,10 +246,10 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                             )
                         );
                         token = undefined!;
-                        if (!(await tokenCollected)) this.skip();
+                        expect(await tokenCollected).to.be.true;
                     });
 
-                    it("can use the target as the unregister token (optional)", async function() {
+                    it("can use the target as the unregister token", async function() {
                         let object = {};
                         const callback = chai.spy();
                         const finalizationGroup = new FinalizationGroup(
@@ -264,7 +264,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                             )
                         );
                         object = undefined!;
-                        if (!(await collected)) this.skip();
+                        expect(await collected).to.be.true;
                     });
                 });
             } else {
