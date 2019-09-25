@@ -1,4 +1,4 @@
-FROM node:current
+FROM node:lts
 
 # Configure apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,11 +20,11 @@ RUN rm -rf /opt/yarn-* \
     && apt-get update \
     && apt-get -y install --no-install-recommends yarn
 
-# Install Chrome unstable for Karma
+# Install Chrome for Karma
 RUN curl -sS https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - 2>/dev/null \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome-unstable.list \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
-    && apt-get -y install --no-install-recommends google-chrome-unstable
+    && apt-get -y install --no-install-recommends google-chrome-stable
 
 # Install libnspr4 for jsshell
 # TODO Figure out how to use downloaded lib
@@ -44,3 +44,4 @@ USER node
 ENV HOME /home/node
 ENV INSIDE_DOCKER=1
 RUN mkdir -p ~/.ssh && ssh-keyscan github.com 2>/dev/null >> ~/.ssh/known_hosts
+RUN npm config set prefix $HOME/.local && echo 'PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc

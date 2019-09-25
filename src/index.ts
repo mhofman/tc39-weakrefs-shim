@@ -11,12 +11,12 @@ function testKnownImplementationIssues(
     try {
         const finalizationGroup = new FinalizationGroup(() => {});
         if (finalizationGroup.unregister({}) !== false) return false;
-        // TBD: Figure out how to test for broken cleanupSome
-        // let called = false;
-        // finalizationGroup.cleanupSome(() => {
-        //     called = true;
-        // });
-        // if (!called) return false;
+        try {
+            finalizationGroup.cleanupSome(
+                {} as FinalizationGroup.CleanupCallback<any>
+            );
+            return false;
+        } catch (err) {}
     } catch (err) {
         return false;
     }
@@ -32,7 +32,7 @@ export const available =
     globalAvailable || spidermonkeyAvailable || nodeAvailable;
 
 export async function shim(
-    wrapBrokenImplementation: boolean = false
+    wrapBrokenImplementation: boolean = true
 ): Promise<Exports> {
     let implementation: Exports;
 
@@ -41,7 +41,7 @@ export async function shim(
 
         if (
             wrapBrokenImplementation &&
-            testKnownImplementationIssues(
+            !testKnownImplementationIssues(
                 implementation.WeakRef,
                 implementation.FinalizationGroup
             )
