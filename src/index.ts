@@ -23,10 +23,11 @@ function testKnownImplementationIssues(
     return true;
 }
 
-type Exports = {
-    WeakRef: WeakRef.Constructor;
-    FinalizationGroup: FinalizationGroup.Constructor;
-};
+export interface Exports {
+    readonly WeakRef: WeakRef.Constructor;
+    readonly FinalizationGroup: FinalizationGroup.Constructor;
+    readonly gc?: () => Promise<void> | void;
+}
 
 export const available =
     globalAvailable || spidermonkeyAvailable || nodeAvailable;
@@ -48,7 +49,8 @@ export async function shim(
         ) {
             implementation = (await import("./wrapper.js")).wrap(
                 implementation.WeakRef,
-                implementation.FinalizationGroup
+                implementation.FinalizationGroup,
+                implementation.gc
             );
         }
     } else if (spidermonkeyAvailable) {
@@ -62,7 +64,10 @@ export async function shim(
     return implementation;
 }
 
-type AsyncExports = Exports & { shim: typeof shim; available: boolean };
+export interface AsyncExports extends Exports {
+    readonly shim: typeof shim;
+    readonly available: typeof available;
+}
 
 let asyncImportPromise: Promise<AsyncExports>;
 

@@ -3,6 +3,7 @@ import { createFinalizationGroupJobsForTaskQueue } from "../internal/Finalizatio
 import { createWeakRefClassShim } from "../internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "../internal/FinalizationGroup.js";
 import { setImmediate } from "../utils/tasks/setImmediate.js";
+import { gc as globalGc } from "../global/gc.js";
 
 declare var nondeterministicGetWeakMapKeys: <T extends object = object>(
     weakMap: WeakMap<T, any>
@@ -138,3 +139,13 @@ export const FinalizationGroup = createFinalizationGroupClassShim(
     getInfo,
     info => observedAliveInfos.has(info) && info.getTarget !== undefined
 );
+
+function spidermonkeyGc(): void {
+    globalGc!();
+    if (gcCheckTaskId !== 0) {
+        clearTimeout(gcCheckTaskId);
+        checkOnKnownObjects();
+    }
+}
+
+export const gc = globalGc && spidermonkeyGc;

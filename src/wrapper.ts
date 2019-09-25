@@ -5,6 +5,7 @@ import { createWeakRefClassShim } from "./internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "./internal/FinalizationGroup.js";
 
 import { FinalizationGroup, WeakRef } from "./weakrefs.js";
+import { Exports } from "./index.js";
 
 class ObjectInfo {
     ref: WeakRef | undefined;
@@ -13,11 +14,9 @@ class ObjectInfo {
 
 export function wrap(
     WeakRef: WeakRef.Constructor,
-    FinalizationGroup: FinalizationGroup.Constructor
-): {
-    WeakRef: WeakRef.Constructor;
-    FinalizationGroup: FinalizationGroup.Constructor;
-} {
+    FinalizationGroup: FinalizationGroup.Constructor,
+    gc?: () => Promise<void> | void
+): Exports {
     const infos = new WeakMap<object, ObjectInfo>();
 
     const finalizationGroup = new FinalizationGroup<ObjectInfo, ObjectInfo>(
@@ -72,6 +71,11 @@ export function wrap(
         info => info.ref!.deref()
     );
 
+    async function wrappedGc(): Promise<void> {
+        await gc!();
+        finalizationGroup.cleanupSome();
+    }
+
     return {
         WeakRef: WrappedWeakRef,
         FinalizationGroup: createFinalizationGroupClassShim(
@@ -79,5 +83,6 @@ export function wrap(
             getInfoWithRegistration,
             info => info.alive === true
         ),
+        gc: gc && wrappedGc,
     };
 }

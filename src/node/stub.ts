@@ -3,6 +3,8 @@ import WeakTag from "@mhofman/weak-napi-native/weak-tag.js";
 // @ts-ignore
 import ObjectInfo from "@mhofman/weak-napi-native/object-info.js";
 
+import { gc } from "./gc.js";
+
 import { FinalizationGroup, WeakRef } from "../weakrefs.js";
 import isObject from "../utils/lodash/isObject.js";
 import { setImmediate } from "../utils/tasks/setImmediate.js";
@@ -183,4 +185,5 @@ class WeakRefNodeStub<T extends object = object> implements WeakRef<T> {
 export {
     FinalizationGroupNodeStub as FinalizationGroup,
     WeakRefNodeStub as WeakRef,
+    gc,
 };

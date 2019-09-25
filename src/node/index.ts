@@ -9,6 +9,8 @@ import { createWeakRefJobsForTaskQueue } from "../internal/WeakRefJobs.js";
 import { createFinalizationGroupJobsForTaskQueue } from "../internal/FinalizationGroupJobs.js";
 import { setImmediate } from "../utils/tasks/setImmediate.js";
 
+export { gc } from "./gc.js";
+
 const tagCollector = new WeakMap<
     object,
     {
