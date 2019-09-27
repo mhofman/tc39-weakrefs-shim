@@ -144,7 +144,8 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
             holdings: Holdings,
             unregisterToken?: Token
         ): void {
-            if (!isObject(target)) throw new TypeError();
+            if (!isObject(target) || (target as any) === holdings)
+                throw new TypeError();
             if (unregisterToken !== undefined && !isObject(unregisterToken))
                 throw TypeError();
 

@@ -224,6 +224,14 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 );
             });
 
+            it("should throw when using target as holdings", async function() {
+                const finalizationGroup = new FinalizationGroup(() => {});
+                const target = {};
+                expect(() =>
+                    finalizationGroup.register(target, target)
+                ).to.throw();
+            });
+
             it("should return undefined", async function() {
                 const finalizationGroup = new FinalizationGroup(() => {});
                 expect(finalizationGroup.register({}, 0)).to.be.equal(

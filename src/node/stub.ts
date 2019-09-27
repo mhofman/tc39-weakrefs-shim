@@ -107,6 +107,7 @@ class FinalizationGroupNodeStub<Holdings>
             tagSet = new Set();
             map.set(target, tagSet);
         }
+        if ((target as any) === holdings) throw new TypeError();
         let registrationSet = unregisterToken
             ? registrations.get(unregisterToken)
             : undefined;
