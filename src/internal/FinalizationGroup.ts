@@ -37,6 +37,7 @@ class FinalizationGroupSlots<
         Token,
         Set<FinalizationGroupCell<ObjectInfo, Holdings>>
     >();
+    isCleanupJobActive = false;
     constructor(
         public readonly cleanupCallback: FinalizationGroup.CleanupCallback<
             Holdings
@@ -195,6 +196,9 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
                 | undefined
         ): void {
             let slots = privates<Slots<Holdings>>(this);
+            if (slots.isCleanupJobActive) {
+                throw new TypeError();
+            }
             if (cleanupCallback === undefined) {
                 cleanupCallback = slots.cleanupCallback;
             } else if (typeof cleanupCallback != "function") {
@@ -216,8 +220,10 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
             const iterator = CleanupIterator(cleanupIteratorContext);
 
             try {
+                slots.isCleanupJobActive = true;
                 cleanupCallback(iterator);
             } finally {
+                slots.isCleanupJobActive = false;
                 cleanupIteratorContext.group = undefined!;
                 getEmptyCellsContext.finalized = undefined!;
                 getEmptyCellsContext.cellsForInfo = undefined!;

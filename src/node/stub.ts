@@ -73,6 +73,7 @@ class FinalizationGroupNodeStub<Holdings>
     implements FinalizationGroup<Holdings> {
     private readonly finalizedCallback: ObjectInfo.FinalizedCallback;
     private readonly cells: Map<ObjectInfo, Cell>;
+    private isCleanupJobActive = false;
 
     constructor(
         private readonly cleanupCallback: FinalizationGroup.CleanupCallback<
@@ -154,18 +155,27 @@ class FinalizationGroupNodeStub<Holdings>
         const context = { cells: this.cells };
         const emptyObjectInfos = getEmptyCellEntries(context);
 
+        if (this.isCleanupJobActive) throw new TypeError();
+
         if (cleanupCallback === undefined) {
             cleanupCallback = this
                 .cleanupCallback as FinalizationGroup.CleanupCallback<Holdings>;
         }
 
-        if (hasEmptyCell(context)) {
-            cleanupCallback(CleanupIterator(emptyObjectInfos));
-        } else if (typeof cleanupCallback != "function") {
-            throw new TypeError();
+        if (!hasEmptyCell(context)) {
+            if (typeof cleanupCallback != "function") {
+                throw new TypeError();
+            }
+            return;
         }
 
-        context.cells = undefined!;
+        try {
+            this.isCleanupJobActive = true;
+            cleanupCallback(CleanupIterator(emptyObjectInfos));
+        } finally {
+            context.cells = undefined!;
+            this.isCleanupJobActive = false;
+        }
     }
 }
 
