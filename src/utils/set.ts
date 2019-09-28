@@ -13,7 +13,7 @@ export function intersects<T>(a: Set<T>, b: Set<T>): boolean {
 export function difference<T>(a: Set<T>, b: Set<T>): Set<T> {
     let res;
     if (a.size <= b.size) {
-        res = new Set();
+        res = new Set<T>();
         for (const info of a) {
             if (!b.has(info)) res.add(info);
         }

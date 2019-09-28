@@ -49,13 +49,13 @@ export function expectThrowIfNotObject(
 export function shouldBehaveAsCleanupJopAccordingToSpec(
     setupCleanupJob: (
         this: Mocha.Context,
-        cleanupCallback: FinalizationGroup.CleanupCallback<any>
+        cleanupCallback: FinalizationGroup.CleanupCallback
     ) => PromiseLike<() => void>
 ): void {
     it("should not swallow errors", async function() {
         let called = true;
         const cleanupCallback = chai.spy<
-            FinalizationGroup.CleanupIterator<any>,
+            FinalizationGroup.CleanupIterator,
             void
         >(function(i) {
             if (called) return;
@@ -73,9 +73,9 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
     });
 
     it("should throw when using the iterator outside cleanup job", async function() {
-        let iterator: FinalizationGroup.CleanupIterator<any>;
+        let iterator: FinalizationGroup.CleanupIterator;
         const cleanupCallback = chai.spy<
-            FinalizationGroup.CleanupIterator<any>,
+            FinalizationGroup.CleanupIterator,
             void
         >(function(i) {
             iterator = i;
@@ -91,11 +91,11 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
     });
 
     it("should throw when using previous iterator", async function() {
-        let iterator: FinalizationGroup.CleanupIterator<any>;
+        let iterator: FinalizationGroup.CleanupIterator;
         let iteratorChecked = false;
         let threw: Error | undefined;
         const cleanupCallback = chai.spy<
-            FinalizationGroup.CleanupIterator<any>,
+            FinalizationGroup.CleanupIterator,
             void
         >(function(i) {
             if (iterator) {
@@ -125,7 +125,7 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
         let triggerCleanupJob: undefined | (() => void);
         let threw: Error | undefined;
         const cleanupCallback = chai.spy<
-            FinalizationGroup.CleanupIterator<any>,
+            FinalizationGroup.CleanupIterator,
             void
         >(function(i) {
             if (!triggerCleanupJob) return;
@@ -149,7 +149,7 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
         it("should have the correct toStringTag", async function() {
             let called = false;
             const cleanupCallback = (
-                items: FinalizationGroup.CleanupIterator<any>
+                items: FinalizationGroup.CleanupIterator
             ) => {
                 if (called) return;
                 called = true;
@@ -210,7 +210,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
             });
 
             describe("should throw when method invoked with non-object target", function() {
-                let finalizationGroup: FinalizationGroup<any>;
+                let finalizationGroup: FinalizationGroup;
                 beforeEach(function() {
                     finalizationGroup = new FinalizationGroup(() => {});
                 });
@@ -220,7 +220,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
             });
 
             describe("should throw when method invoked with non-object unregisterToken", function() {
-                let finalizationGroup: FinalizationGroup<any>;
+                let finalizationGroup: FinalizationGroup;
                 beforeEach(function() {
                     finalizationGroup = new FinalizationGroup(() => {});
                 });
@@ -394,7 +394,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
             });
 
             describe("should throw when method invoked with non-object unregisterToken", function() {
-                let finalizationGroup: FinalizationGroup<any>;
+                let finalizationGroup: FinalizationGroup;
                 beforeEach(function() {
                     finalizationGroup = new FinalizationGroup(() => {});
                 });
@@ -538,7 +538,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
             });
 
             describe("should throw when called with non-object", function() {
-                let finalizationGroup: FinalizationGroup<any>;
+                let finalizationGroup: FinalizationGroup;
                 beforeEach(function() {
                     if (!workingCleanupSome) this.skip();
                     finalizationGroup = new FinalizationGroup(() => {});
@@ -556,7 +556,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 if (!workingCleanupSome) this.skip();
                 expect(() =>
                     finalizationGroup.cleanupSome(
-                        {} as FinalizationGroup.CleanupCallback<any>
+                        {} as FinalizationGroup.CleanupCallback
                     )
                 ).to.throw();
             });
@@ -725,7 +725,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                 expect(
                     () =>
                         new FinalizationGroup(
-                            {} as FinalizationGroup.CleanupCallback<any>
+                            {} as FinalizationGroup.CleanupCallback
                         )
                 ).to.throw();
             });

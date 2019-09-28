@@ -11,20 +11,20 @@ import {
 import { FinalizationGroup } from "../weakrefs.js";
 
 describe("FinalizationGroupShim", function() {
-    type Holding = number;
+    type Holdings = number;
     let objectMap: Map<object, ObjectInfoMock>;
     let jobs: FinalizationGroupJobsMock<ObjectInfoMock>;
     let getInfo: ChaiSpies.SpyFunc1<object, ObjectInfoMock>;
     let isAlive: ChaiSpies.SpyFunc1<ObjectInfoMock, boolean>;
     let FinalizationGroup: FinalizationGroup.Constructor;
-    let finalizationGroup: FinalizationGroup<Holding>;
-    let recentlyFinalized: Array<Holding>;
+    let finalizationGroup: FinalizationGroup<Holdings>;
+    let recentlyFinalized: Array<Holdings>;
 
     beforeEach(function() {
         objectMap = new Map();
         jobs = new FinalizationGroupJobsMock(
-            chai.spy((fg: FinalizationGroup<Holding>) => {
-                const finalized = new Set();
+            chai.spy((fg: FinalizationGroup<Holdings>) => {
+                const finalized = new Set<ObjectInfoMock>();
                 for (const info of objectMap.values()) {
                     if (!info.target) finalized.add(info);
                 }
@@ -330,7 +330,7 @@ describe("FinalizationGroupShim", function() {
 
         describe("collection behavior", function() {
             let constructorCallback: ChaiSpies.SpyFunc1<
-                FinalizationGroup.CleanupIterator<Holding>,
+                FinalizationGroup.CleanupIterator<Holdings>,
                 void
             >;
 

@@ -26,7 +26,7 @@ class FinalizationGroupCell<ObjectInfo, Holdings> {
 
 class FinalizationGroupSlots<
     ObjectInfo,
-    Holdings,
+    Holdings = any,
     Token extends object = object
 > {
     readonly cellsForTarget = new Map<
@@ -57,8 +57,8 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
     isAlive: WeakRefsObjectInfoIsAlive<ObjectInfo>
 ): FinalizationGroup.Constructor {
     const privates = makePrivates<
-        FinalizationGroupSlots<ObjectInfo, any, object>,
-        FinalizationGroup<any>
+        FinalizationGroupSlots<ObjectInfo>,
+        FinalizationGroup
     >();
 
     type Slots<Holdings> = FinalizationGroupSlots<ObjectInfo, Holdings>;

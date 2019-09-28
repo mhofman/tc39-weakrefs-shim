@@ -1,9 +1,17 @@
-export declare class FinalizationGroup<
+export interface WeakRef<T extends object = object> {
+    deref(): T | undefined;
+}
+
+export declare namespace WeakRef {
+    export interface Constructor {
+        new <T extends object = object>(target: T): WeakRef<T>;
+    }
+}
+
+export interface FinalizationGroup<
     Holdings = any,
     Token extends object = object
 > {
-    constructor(cleanupCallback: FinalizationGroup.CleanupCallback<Holdings>);
-
     register(target: object, holdings: Holdings, unregisterToken?: Token): void;
     unregister(unregisterToken: Token): boolean;
     cleanupSome(
@@ -12,23 +20,18 @@ export declare class FinalizationGroup<
 }
 
 export declare namespace FinalizationGroup {
-    export interface CleanupIterator<Holdings>
+    export interface CleanupIterator<Holdings = any>
         extends IterableIterator<Holdings> {
-        [Symbol.toStringTag]: string;
+        [Symbol.toStringTag]: "FinalizationGroup Cleanup Iterator";
     }
 
-    export interface CleanupCallback<Holdings> {
+    export interface CleanupCallback<Holdings = any> {
         (items: CleanupIterator<Holdings>): void;
     }
 
-    export type Constructor = typeof FinalizationGroup;
-}
-
-export declare class WeakRef<T extends object = object> {
-    constructor(target: T);
-    deref(): T | undefined;
-}
-
-export declare namespace WeakRef {
-    export type Constructor = typeof WeakRef;
+    export interface Constructor {
+        new <Holdings = any, Token extends object = object>(
+            cleanupCallback: FinalizationGroup.CleanupCallback<Holdings>
+        ): FinalizationGroup<Holdings, Token>;
+    }
 }

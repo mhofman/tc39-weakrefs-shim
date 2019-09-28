@@ -9,23 +9,23 @@ export class ObjectInfoMock {
     constructor(public target: object | undefined = {}) {}
 }
 
-export class FinalizationGroupJobsMock<ObjectInfo>
+export class FinalizationGroupJobsMock<ObjectInfo = ObjectInfoMock>
     implements Interface<FinalizationGroupJobs<ObjectInfo>> {
     readonly registerFinalizationGroup: (
-        finalizationGroup: FinalizationGroup<any>,
+        finalizationGroup: FinalizationGroup,
         info: ObjectInfo
     ) => void;
     readonly unregisterFinalizationGroup: (
-        finalizationGroup: FinalizationGroup<any>,
+        finalizationGroup: FinalizationGroup,
         info: ObjectInfo
     ) => void;
     readonly checkForEmptyCells: (
-        finalizationGroup: FinalizationGroup<any>
+        finalizationGroup: FinalizationGroup
     ) => boolean;
 
     constructor(
         readonly getFinalizedInFinalizationGroup: (
-            finalizationGroup: FinalizationGroup<any>
+            finalizationGroup: FinalizationGroup
         ) => Set<ObjectInfo> = chai.spy(() => new Set())
     ) {
         this.registerFinalizationGroup = chai.spy();
@@ -33,5 +33,5 @@ export class FinalizationGroupJobsMock<ObjectInfo>
         this.checkForEmptyCells = chai.spy(() => true);
     }
     setFinalized(...infos: Array<ObjectInfo>): void {}
-    cleanupFinalizationGroup(finalizationGroup: FinalizationGroup<any>): void {}
+    cleanupFinalizationGroup(finalizationGroup: FinalizationGroup): void {}
 }

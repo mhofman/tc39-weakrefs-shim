@@ -14,11 +14,11 @@ interface FinalizationGroupDetails<ObjectInfo> {
 }
 
 export interface CleanupFinalizationGroup {
-    (finalizationGroup: FinalizationGroup<any>): void;
+    (finalizationGroup: FinalizationGroup): void;
 }
 
 export interface CheckForEmptyCells {
-    (finalizationGroup: FinalizationGroup<any>): boolean;
+    (finalizationGroup: FinalizationGroup): boolean;
 }
 
 export interface FinalizationGroupJobs<ObjectInfo> {
@@ -27,21 +27,21 @@ export interface FinalizationGroupJobs<ObjectInfo> {
 
     setFinalized(...infos: Array<ObjectInfo>): void;
     getFinalizedInFinalizationGroup(
-        finalizationGroup: FinalizationGroup<any>
+        finalizationGroup: FinalizationGroup
     ): Set<ObjectInfo>;
     registerFinalizationGroup(
-        finalizationGroup: FinalizationGroup<any>,
+        finalizationGroup: FinalizationGroup,
         info: ObjectInfo
     ): void;
     unregisterFinalizationGroup(
-        finalizationGroup: FinalizationGroup<any>,
+        finalizationGroup: FinalizationGroup,
         info: ObjectInfo
     ): void;
 }
 
 export function createFinalizationGroupJobs<ObjectInfo>(
     scheduleCleanupFinalizationGroup: (
-        finalizationGroup: FinalizationGroup<any>
+        finalizationGroup: FinalizationGroup
     ) => number,
     hooks: {
         registerObjectInfo?: RegisterObjectInfo<ObjectInfo>;
@@ -49,12 +49,12 @@ export function createFinalizationGroupJobs<ObjectInfo>(
     } = {}
 ): FinalizationGroupJobs<ObjectInfo> {
     const finalizationGroupDetails = new WeakMap<
-        FinalizationGroup<any>,
+        FinalizationGroup,
         FinalizationGroupDetails<ObjectInfo>
     >();
     const finalizationGroupsForInfos = new Map<
         ObjectInfo,
-        Set<FinalizationGroup<any>>
+        Set<FinalizationGroup>
     >();
 
     return {
@@ -87,7 +87,7 @@ export function createFinalizationGroupJobs<ObjectInfo>(
         },
 
         registerFinalizationGroup(
-            finalizationGroup: FinalizationGroup<any>,
+            finalizationGroup: FinalizationGroup,
             info: ObjectInfo
         ): void {
             let finalizationGroupsForInfo = finalizationGroupsForInfos.get(
@@ -96,7 +96,7 @@ export function createFinalizationGroupJobs<ObjectInfo>(
             if (!finalizationGroupsForInfo) {
                 if (hooks.registerObjectInfo) hooks.registerObjectInfo(info);
 
-                finalizationGroupsForInfo = new Set<FinalizationGroup<any>>();
+                finalizationGroupsForInfo = new Set<FinalizationGroup>();
                 finalizationGroupsForInfos.set(info, finalizationGroupsForInfo);
             }
             finalizationGroupsForInfo.add(finalizationGroup);
@@ -110,7 +110,7 @@ export function createFinalizationGroupJobs<ObjectInfo>(
         },
 
         unregisterFinalizationGroup(
-            finalizationGroup: FinalizationGroup<any>,
+            finalizationGroup: FinalizationGroup,
             info: ObjectInfo
         ): void {
             const details = finalizationGroupDetails.get(finalizationGroup);
@@ -131,22 +131,20 @@ export function createFinalizationGroupJobs<ObjectInfo>(
         },
 
         getFinalizedInFinalizationGroup(
-            finalizationGroup: FinalizationGroup<any>
+            finalizationGroup: FinalizationGroup
         ): Set<ObjectInfo> {
             const details = finalizationGroupDetails.get(finalizationGroup);
 
             return details ? details.finalizedInfos : new Set();
         },
 
-        checkForEmptyCells(finalizationGroup: FinalizationGroup<any>): boolean {
+        checkForEmptyCells(finalizationGroup: FinalizationGroup): boolean {
             const details = finalizationGroupDetails.get(finalizationGroup);
 
             return !!details && details.finalizedInfos.size > 0;
         },
 
-        cleanupFinalizationGroup(
-            finalizationGroup: FinalizationGroup<any>
-        ): void {
+        cleanupFinalizationGroup(finalizationGroup: FinalizationGroup): void {
             const details = finalizationGroupDetails.get(finalizationGroup);
 
             details!.cleanupTaskId = 0;

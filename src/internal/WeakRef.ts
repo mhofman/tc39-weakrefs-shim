@@ -26,13 +26,10 @@ export function createWeakRefClassShim<
     getTarget: WeakRefsGetTarget<ObjectInfo>,
     initSlots: (target: object, self: WeakRef) => Slots = target =>
         new WeakRefSlots<ObjectInfo>(getInfo(target)) as Slots
-): [
-    WeakRef.Constructor,
-    Privates<Slots, import("../weakrefs.js").WeakRef<object>>
-] {
-    const privates = makePrivates<Slots, WeakRef<object>>();
+): [WeakRef.Constructor, Privates<Slots, import("../weakrefs.js").WeakRef>] {
+    const privates = makePrivates<Slots, WeakRef>();
 
-    class WeakRef<U extends object> {
+    class WeakRef<U extends object = object> {
         constructor(target: U) {
             if (!isObject(target)) throw new TypeError();
             jobs.keepDuringJob(target);

@@ -13,7 +13,7 @@ function testKnownImplementationIssues(
         if (finalizationGroup.unregister({}) !== false) return false;
         try {
             finalizationGroup.cleanupSome(
-                {} as FinalizationGroup.CleanupCallback<any>
+                {} as FinalizationGroup.CleanupCallback
             );
             return false;
         } catch (err) {}
