@@ -1,8 +1,9 @@
-import { Agent } from "../internal/Agent.js";
-import { makeAgentFinalizationJobScheduler } from "../internal/AgentFinalizationJobScheduler.js";
+import { createWeakRefJobsForTaskQueue } from "../internal/WeakRefJobs.js";
+import { createFinalizationGroupJobsForTaskQueue } from "../internal/FinalizationGroupJobs.js";
 import { createWeakRefClassShim } from "../internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "../internal/FinalizationGroup.js";
-import { setImmediate, clearImmediate } from "../utils/tasks/setImmediate.js";
+import { setImmediate } from "../utils/tasks/setImmediate.js";
+import { gc as globalGc } from "../global/gc.js";
 
 declare var nondeterministicGetWeakMapKeys: <T extends object = object>(
     weakMap: WeakMap<T, any>
@@ -13,7 +14,6 @@ declare var makeFinalizeObserver: () => object;
 
 const targetToInfoMap = new WeakMap<object, ObjectInfo>();
 export const observedAliveInfos = new Set<ObjectInfo>();
-let finalizedInfos = new Set<ObjectInfo>();
 let knownFinalizeCount = 0;
 let knownAliveObjectsCount = 0;
 
@@ -90,8 +90,8 @@ function checkOnKnownObjects() {
             );
             for (const info of observedAliveInfos) {
                 if (aliveInfos.has(info)) continue;
-                finalizedInfos.add(info);
                 observedAliveInfos.delete(info);
+                finalizationGroupJobs.setFinalized(info);
             }
         }
     }
@@ -105,9 +105,7 @@ function checkOnKnownObjects() {
 
     if (observedAliveInfos.size > 0) {
         if (start || previousFinalizeCount != knownFinalizeCount) {
-            // Make sure the special object stays alive a little
-            const marker = makeFinalizeObserver();
-            new WeakRef(marker);
+            getInfo(makeFinalizeObserver());
         }
 
         gcCheckTaskId = setTimeout(checkOnKnownObjects, gcCheckInterval);
@@ -115,48 +113,39 @@ function checkOnKnownObjects() {
         clearTimeout(gcCheckTaskId);
         gcCheckTaskId = 0;
     }
-
-    if (finalizedInfos.size > 0) {
-        updatePendingTask(true);
-    }
 }
 
-const agent = new Agent<ObjectInfo>(
-    () => {
-        const finalized = finalizedInfos;
-        finalizedInfos = new Set();
-        return finalized;
+const finalizationGroupJobs = createFinalizationGroupJobsForTaskQueue<
+    ObjectInfo
+>(setImmediate, {
+    registerObjectInfo: info => {
+        observedAliveInfos.add(info);
+        if (observedAliveInfos.size == 1) checkOnKnownObjects();
     },
-    {
-        registerObjectInfo: info => {
-            observedAliveInfos.add(info);
-            if (observedAliveInfos.size == 1) checkOnKnownObjects();
-        },
-        unregisterObjectInfo: info => {
-            observedAliveInfos.delete(info);
-            if (observedAliveInfos.size == 0) checkOnKnownObjects();
-        },
-        holdObject: (object: any) => {
-            updatePendingTask();
-        },
-        releaseObject: (object: any) => {
-            if (!agent.isKeepingObjects) updatePendingTask();
-        },
-    }
-);
+    unregisterObjectInfo: info => {
+        const wasObserved = observedAliveInfos.delete(info);
+        if (wasObserved && observedAliveInfos.size == 0) checkOnKnownObjects();
+    },
+});
 
-const updatePendingTask = makeAgentFinalizationJobScheduler(
-    agent,
-    setImmediate,
-    clearImmediate
-);
-
-export const [WeakRef] = createWeakRefClassShim(agent, getInfo, info =>
-    info.getTarget()
+export const [WeakRef] = createWeakRefClassShim(
+    createWeakRefJobsForTaskQueue(setImmediate),
+    getInfo,
+    info => info.getTarget()
 );
 
 export const FinalizationGroup = createFinalizationGroupClassShim(
-    agent,
+    finalizationGroupJobs,
     getInfo,
     info => observedAliveInfos.has(info) && info.getTarget !== undefined
 );
+
+function spidermonkeyGc(): void {
+    globalGc!();
+    if (gcCheckTaskId !== 0) {
+        clearTimeout(gcCheckTaskId);
+        checkOnKnownObjects();
+    }
+}
+
+export const gc = globalGc && spidermonkeyGc;

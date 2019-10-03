@@ -4,17 +4,83 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Mocha All (Dist)",
+      "name": "Mocha Node (Source)",
       "runtimeArgs": [
         "--expose-gc",
         "--require", "esm",
-        "--require", "${workspaceFolder}/tests/setup.node.js",
-         ],
+        "--require", "./tests/setup.node.cjs"
+      ],
       "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
       "args": [
         "--timeout", "999999",
         "--colors",
-        "--opts", "${workspaceFolder}/mocha.opts"
+        "--opts", "./mocha.opts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Node (Dist CommonJS)",
+      "preLaunchTask": "npm: pretest:node:cjs",
+      "postDebugTask": "npm: posttest:node:cjs",
+      "cwd": "${workspaceFolder}/tmp-node-cjs",
+      "outFiles": ["${workspaceFolder}/tmp-node-cjs/**/*.js"],
+      "runtimeArgs": [
+        "--expose-gc",
+        "--require", "./tests/setup/node"
+      ],
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--timeout", "999999",
+        "--colors",
+        "--opts", "../mocha.opts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Node (Dist ES Module)",
+      "preLaunchTask": "npm: pretest:node:esm",
+      "postDebugTask": "npm: posttest:node:esm",
+      "cwd": "${workspaceFolder}/tmp-node-esm",
+      "outFiles": ["${workspaceFolder}/tmp-node-esm/**/*.js"],
+      "runtimeArgs": [
+        "--expose-gc",
+        "--require", "esm",
+        "--require", "./tests/setup/node"
+      ],
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--timeout", "999999",
+        "--colors",
+        "--opts", "../mocha.opts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha Node (Dist ES Module experimental)",
+      "preLaunchTask": "npm: pretest:node:esm:experimental",
+      "postDebugTask": "npm: posttest:node:esm:experimental",
+      "cwd": "${workspaceFolder}/tmp-node-esm",
+      "outFiles": ["${workspaceFolder}/tmp-node-esm/**/*.js"],
+      "runtimeArgs": [
+        "--expose-gc",
+        "--experimental-modules",
+        "--require", "./tests/setup/node",
+        "--require", "./tests/setup/node/mocha-loadfiles-import.js"
+      ],
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "--timeout", "999999",
+        "--colors",
+        "--opts", "../mocha.opts"
       ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"

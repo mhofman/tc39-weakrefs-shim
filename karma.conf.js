@@ -85,11 +85,11 @@ module.exports = function(config) {
         browsers,
         customLaunchers: {
             GCChromeHeadless: {
-                base: "ChromeCanaryHeadless",
+                base: "ChromeHeadless",
                 flags,
             },
             GCChromeDebug: {
-                base: "ChromeCanary",
+                base: "Chrome",
                 flags,
                 chromeDataDir: ".chrome",
             },

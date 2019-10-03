@@ -4,6 +4,6 @@
     "outDir": "../../../tmp-node-esm/",
     "moduleResolution": "node",
     "noEmit": false,
-    "sourceMap": false
+    "sourceMap": true
   }
 }

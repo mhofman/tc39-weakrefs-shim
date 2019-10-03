@@ -5,9 +5,11 @@ import ObjectInfo from "@mhofman/weak-napi-native/object-info.js";
 
 import { createWeakRefClassShim } from "../internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "../internal/FinalizationGroup.js";
-import { Agent } from "../internal/Agent.js";
-import { makeAgentFinalizationJobScheduler } from "../internal/AgentFinalizationJobScheduler.js";
-import { setImmediate, clearImmediate } from "../utils/tasks/setImmediate.js";
+import { createWeakRefJobsForTaskQueue } from "../internal/WeakRefJobs.js";
+import { createFinalizationGroupJobsForTaskQueue } from "../internal/FinalizationGroupJobs.js";
+import { setImmediate } from "../utils/tasks/setImmediate.js";
+
+export { gc } from "./gc.js";
 
 const tagCollector = new WeakMap<
     object,
@@ -18,13 +20,11 @@ const tagCollector = new WeakMap<
 >();
 
 const observedInfos = new Set<ObjectInfo>();
-let finalizedInfos = new Set<ObjectInfo>();
 
 function finalizedCallback(this: ObjectInfo) {
     if (!observedInfos.has(this)) return;
     observedInfos.delete(this);
-    finalizedInfos.add(this);
-    updatePendingTask(true);
+    finalizationGroupJobs.setFinalized(this);
 }
 
 function getInfo(target: object) {
@@ -37,42 +37,25 @@ function getInfo(target: object) {
     return objectDetails.info;
 }
 
-const agent = new Agent<ObjectInfo>(
-    () => {
-        const finalized = finalizedInfos;
-        finalizedInfos = new Set();
-        return finalized;
+const finalizationGroupJobs = createFinalizationGroupJobsForTaskQueue<
+    ObjectInfo
+>(setImmediate, {
+    registerObjectInfo: info => {
+        observedInfos.add(info);
     },
-    {
-        registerObjectInfo: info => {
-            observedInfos.add(info);
-        },
-        unregisterObjectInfo: info => {
-            observedInfos.delete(info);
-        },
-        holdObject: () => {
-            updatePendingTask();
-        },
-        releaseObject: () => {
-            if (!agent.isKeepingObjects) updatePendingTask();
-        },
-    }
-);
-
-const updatePendingTask = makeAgentFinalizationJobScheduler(
-    agent,
-    setImmediate,
-    clearImmediate
-);
+    unregisterObjectInfo: info => {
+        observedInfos.delete(info);
+    },
+});
 
 export const [WeakRef] = createWeakRefClassShim(
-    agent,
+    createWeakRefJobsForTaskQueue(setImmediate),
     getInfo,
     info => info.target
 );
 
 export const FinalizationGroup = createFinalizationGroupClassShim(
-    agent,
+    finalizationGroupJobs,
     getInfo,
     info => observedInfos.has(info)
 );

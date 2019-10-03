@@ -15,6 +15,8 @@ Pull requests for improvements or new platform support gladly accepted.
 Node has the ability to expose the underlying engine's garbage collection process through [Native Addons](https://nodejs.org/api/n-api.html).
 This package uses the native bindings of the [weak-napi node module](https://github.com/node-ffi-napi/weak-napi) to be notified of the finalization of tracked objects.
 
+Please note there is currently an [issue with Node 12](https://github.com/node-ffi-napi/weak-napi/issues/16) causing intermittent SegFaults.
+
 ### Mozilla JavaScript shell
 
 The [SpiderMonkey shell](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell) exposes some privileged APIs as [globals](https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Shell_global_objects), including the ability to recover the keys of a `WeakMap`.
@@ -24,9 +26,22 @@ For this reason, the shim for the JS Shell is more a proof of concept than anyth
 
 ### Chrome/V8 (with command-line flag)
 
-Chrome 74+ / V8 7.4 implements the weakrefs proposal behind a command-line flag (`--js-flags="--harmony-weak-refs"`). In that case the shim will simply return the host's implementation.
+V8 7.4, included in Chrome 74 and Node 12.0, implements the weakrefs proposal natively behind a command-line flag (`--js-flags="--harmony-weak-refs"`).
 
-However, V8's current implementation is not compliant with the latest version of the spec proposal, and the shim is able to wrap it if required.
+However, V8's current implementation is not compliant with the latest version of the spec proposal. The shim attempts to detect and wrap broken implementations.
+
+In V8 7.4, the following are notable deviations of the native implementation:
+
+-   `FinalizationGroup.prototype.unregister` does not work at all
+-   `FinalizationGroup.prototype.cleanupSome` ignores its `callback` parameter and always invokes the callback provided to the constructor
+-   Errors thrown inside the cleanup callback are swallowed and never reach the global unhandled error handler. This only affects the automatic cleanup callback invocation when the engine finds new finalized targets.
+-   The `CleanupIterator` can be used outside of the callback's invocation when it shouldn't (including in async functions)
+-   `FinalizationGroup` instances may leak in some circumstances.
+-   The `unregisterToken` is held strongly so anything it references cannot be collected. In particular, it prevents using the `target` as the token.
+
+V8 7.7 (Chrome 77 and Node 12.11) fixed some issues with `FinalizationGroup.prototype.unregister` and `FinalizationGroup.prototype.cleanupSome`. Since the remaining defects are dependent on garbage collection occurring, the shim can no longer detect them and wrap the native implementation automatically.
+
+V8 7.8 changed the integration of the WeakRef feature with the host environment (browser). Chrome 78 did not update accordingly making the feature virtually useless: WeakRef leak their target which will never be collected, and the FinalizationGroup's cleanup callback is never executed automatically. Only `FinalizationGroup.prototype.cleanupSome` can process collected targets.
 
 ## Usage
 
@@ -51,7 +66,7 @@ Since an implementation may not be available for the platform, the module entryp
 export const available: boolean;
 
 export async function shim(
-    wrapBrokenImplementation: boolean = false
+    wrapBrokenImplementation: boolean = true
 ): Promise<{
     WeakRef: WeakRef.Constructor,
     FinalizationGroup: FinalizationGroup.Constructor,
@@ -83,7 +98,7 @@ if (weakrefs.available)
 
 #### Wrapper
 
-The `shim` export can test and automatically wrap a broken weakrefs native implementation when calling it with `shim(wrapBrokenImplementation = true)`.
+The `shim` export, as well as the dynamic import, automatically wraps a broken weakrefs native implementation. To prevent the behavior, use the static import and call `shim` with `wrapBrokenImplementation = false`.
 
 #### Dynamic import
 
@@ -133,22 +148,24 @@ const { WeakRef, FinalizationGroup } = wrap(
 );
 ```
 
-## Tests
+## Implementation details
+
+### Tests
 
 The package includes generic tests for the weakrefs APIs.
 
 On each platform the loaded shim is tested against those.\
-That means that on Chrome 74, some tests fail. This is expected.
+If the native implementation is detected as broken, the wrapped implementation is used to avoid failing tests.
 
 Some tests rely on the garbage collector being exposed as the `gc()` global. On V8 (Chrome and node), this is done through the `--expose-gc` command line flag.
 
 If adding an implementation for another platform, please make sure the tests pass.
 
-## Implementation details
+### Internal API
 
 A new implementation should leverage the internal API to create the `WeakRef` and `FinalizationGroup` exports
 
-### Internal API
+**Note:** This section is not up-to-date with the current implementation
 
 #### Abstract types and operations
 

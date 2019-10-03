@@ -1,85 +1,88 @@
-import { Agent } from "./internal/Agent.js";
-import { makeAgentFinalizationJobScheduler } from "./internal/AgentFinalizationJobScheduler.js";
-import { setImmediate, clearImmediate } from "./utils/tasks/setImmediate.js";
+import { createWeakRefJobsForTaskQueue } from "./internal/WeakRefJobs.js";
+import { createFinalizationGroupJobsForTaskQueue } from "./internal/FinalizationGroupJobs.js";
+import { setImmediate } from "./utils/tasks/setImmediate.js";
 import { createWeakRefClassShim } from "./internal/WeakRef.js";
 import { createFinalizationGroupClassShim } from "./internal/FinalizationGroup.js";
 
 import { FinalizationGroup, WeakRef } from "./weakrefs.js";
+import { Exports } from "./index.js";
+
+class ObjectInfo {
+    ref: WeakRef | undefined;
+    alive: boolean | undefined;
+}
 
 export function wrap(
     WeakRef: WeakRef.Constructor,
-    FinalizationGroup: FinalizationGroup.Constructor
-): {
-    WeakRef: WeakRef.Constructor;
-    FinalizationGroup: FinalizationGroup.Constructor;
-} {
-    const refCollector = new WeakMap<object, WeakRef>();
+    FinalizationGroup: FinalizationGroup.Constructor,
+    gc?: () => Promise<void> | void
+): Exports {
+    const infos = new WeakMap<object, ObjectInfo>();
 
-    // Track the alive refs to avoid unnecessary deref() calls
-    // which make the agent keep the object for the job
-    // Also used in case unregister doesn't work
-    const aliveRefs = new Set<WeakRef>();
-    let finalizedRefs = new Set<WeakRef>();
-
-    const finalizationGroup = new FinalizationGroup(items => {
-        for (const item of items) {
-            if (aliveRefs.has(item)) {
-                finalizedRefs.add(item);
-                aliveRefs.delete(item);
+    const finalizationGroup = new FinalizationGroup<ObjectInfo, ObjectInfo>(
+        items => {
+            for (const item of items) {
+                if (item.alive) {
+                    item.alive = false;
+                    finalizationGroupJobs.setFinalized(item);
+                }
             }
         }
-        updatePendingTask(true);
-    });
+    );
 
-    function getRef(target: object) {
-        let ref = refCollector.get(target);
-        if (!ref) {
-            ref = new WeakRef(target);
-            refCollector.set(target, ref);
+    function getInfo(target: object) {
+        let info = infos.get(target);
+        if (!info) {
+            info = new ObjectInfo();
+            infos.set(target, info);
         }
-        return ref;
+        return info;
     }
 
-    const agent = new Agent<WeakRef>(
-        () => {
-            const finalized = finalizedRefs;
-            finalizedRefs = new Set();
-            return finalized;
-        },
-        {
-            registerObjectInfo: ref => {
-                finalizationGroup.register(ref.deref()!, ref, ref);
-                aliveRefs.add(ref);
-            },
-            unregisterObjectInfo: ref => {
-                finalizationGroup.unregister(ref);
-                aliveRefs.delete(ref);
-            },
-            holdObject: () => {
-                updatePendingTask();
-            },
-            releaseObject: () => {
-                if (!agent.isKeepingObjects) updatePendingTask();
-            },
+    function getInfoWithRef(target: object) {
+        let info = getInfo(target);
+        if (!info.ref) {
+            info.ref = new WeakRef(target);
         }
+        return info;
+    }
+
+    function getInfoWithRegistration(target: object) {
+        let info = getInfo(target);
+        if (info.alive === undefined) {
+            finalizationGroup.register(target, info, info);
+            info.alive = true;
+        }
+        return info;
+    }
+
+    const finalizationGroupJobs = createFinalizationGroupJobsForTaskQueue<
+        ObjectInfo
+    >(setImmediate, {
+        unregisterObjectInfo: info => {
+            if (info.alive) finalizationGroup.unregister(info);
+            info.alive = undefined;
+        },
+    });
+
+    const [WrappedWeakRef] = createWeakRefClassShim(
+        createWeakRefJobsForTaskQueue(setImmediate),
+        getInfoWithRef,
+        info => info.ref!.deref()
     );
 
-    const updatePendingTask = makeAgentFinalizationJobScheduler(
-        agent,
-        setImmediate,
-        clearImmediate
-    );
-
-    const [WrappedWeakRef] = createWeakRefClassShim(agent, getRef, ref =>
-        ref.deref()
-    );
+    async function wrappedGc(): Promise<void> {
+        await gc!();
+        finalizationGroup.cleanupSome();
+    }
 
     return {
         WeakRef: WrappedWeakRef,
         FinalizationGroup: createFinalizationGroupClassShim(
-            agent,
-            getRef,
-            ref => aliveRefs.has(ref)
+            finalizationGroupJobs,
+            getInfoWithRegistration,
+            info => info.alive === true
         ),
+        gc: gc && wrappedGc,
     };
 }

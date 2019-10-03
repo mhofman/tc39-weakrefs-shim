@@ -11,27 +11,29 @@ function testKnownImplementationIssues(
     try {
         const finalizationGroup = new FinalizationGroup(() => {});
         if (finalizationGroup.unregister({}) !== false) return false;
-        let called = false;
-        finalizationGroup.cleanupSome(() => {
-            called = true;
-        });
-        if (!called) return false;
+        try {
+            finalizationGroup.cleanupSome(
+                {} as FinalizationGroup.CleanupCallback
+            );
+            return false;
+        } catch (err) {}
     } catch (err) {
         return false;
     }
     return true;
 }
 
-type Exports = {
-    WeakRef: WeakRef.Constructor;
-    FinalizationGroup: FinalizationGroup.Constructor;
-};
+export interface Exports {
+    readonly WeakRef: WeakRef.Constructor;
+    readonly FinalizationGroup: FinalizationGroup.Constructor;
+    readonly gc?: () => Promise<void> | void;
+}
 
 export const available =
     globalAvailable || spidermonkeyAvailable || nodeAvailable;
 
 export async function shim(
-    wrapBrokenImplementation: boolean = false
+    wrapBrokenImplementation: boolean = true
 ): Promise<Exports> {
     let implementation: Exports;
 
@@ -40,14 +42,15 @@ export async function shim(
 
         if (
             wrapBrokenImplementation &&
-            testKnownImplementationIssues(
+            !testKnownImplementationIssues(
                 implementation.WeakRef,
                 implementation.FinalizationGroup
             )
         ) {
             implementation = (await import("./wrapper.js")).wrap(
                 implementation.WeakRef,
-                implementation.FinalizationGroup
+                implementation.FinalizationGroup,
+                implementation.gc
             );
         }
     } else if (spidermonkeyAvailable) {
@@ -61,7 +64,10 @@ export async function shim(
     return implementation;
 }
 
-type AsyncExports = Exports & { shim: typeof shim; available: boolean };
+export interface AsyncExports extends Exports {
+    readonly shim: typeof shim;
+    readonly available: typeof available;
+}
 
 let asyncImportPromise: Promise<AsyncExports>;
 
