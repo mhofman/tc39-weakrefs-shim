@@ -1,6 +1,6 @@
 {
   "name": "tc39-weakrefs-shim",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Shim for TC39 Weakrefs proposal",
   "main": "lib/index.js",
   "module": "module/index.js",
