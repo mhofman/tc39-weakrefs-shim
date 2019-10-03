@@ -191,6 +191,12 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("register", function() {
+            it("should have a length of 2", function() {
+                expect(FinalizationGroup.prototype.register.length).to.be.equal(
+                    2
+                );
+            });
+
             describe("should throw when function invoked on non-object", function() {
                 expectThrowIfNotObject((value: any) =>
                     FinalizationGroup.prototype.register.call(value, {}, 0)
@@ -362,6 +368,12 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("unregister", function() {
+            it("should have a length of 1", function() {
+                expect(
+                    FinalizationGroup.prototype.unregister.length
+                ).to.be.equal(1);
+            });
+
             describe("should throw when function invoked on non-object", function() {
                 expectThrowIfNotObject((value: any) =>
                     FinalizationGroup.prototype.unregister.call(value, {})
@@ -498,6 +510,12 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("cleanupSome", function() {
+            it("should have a length of 0", function() {
+                expect(
+                    FinalizationGroup.prototype.cleanupSome.length
+                ).to.be.equal(0);
+            });
+
             describe("should throw when function invoked on non-object", function() {
                 expectThrowIfNotObject((value: any) =>
                     FinalizationGroup.prototype.cleanupSome.call(value)
@@ -687,6 +705,10 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
         });
 
         describe("constructor", function() {
+            it("should have a length of 1", function() {
+                expect(FinalizationGroup.length).to.be.equal(1);
+            });
+
             it("should throw when constructor called without new", async function() {
                 const constructorFn: Function = FinalizationGroup;
 

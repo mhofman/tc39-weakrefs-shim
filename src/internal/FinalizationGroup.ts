@@ -142,7 +142,7 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
         register(
             target: object,
             holdings: Holdings,
-            unregisterToken?: Token
+            unregisterToken: Token | undefined = undefined
         ): void {
             if (!isObject(target) || (target as any) === holdings)
                 throw new TypeError();
@@ -194,7 +194,7 @@ export function createFinalizationGroupClassShim<ObjectInfo>(
         cleanupSome(
             cleanupCallback:
                 | FinalizationGroup.CleanupCallback<Holdings>
-                | undefined
+                | undefined = undefined
         ): void {
             let slots = privates<Slots<Holdings>>(this);
             if (slots.isCleanupJobActive) {

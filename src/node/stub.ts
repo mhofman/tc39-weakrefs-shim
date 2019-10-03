@@ -99,7 +99,7 @@ class FinalizationGroupNodeStub<Holdings>
     register(
         target: object,
         holdings: Holdings,
-        unregisterToken?: object
+        unregisterToken: object | undefined = undefined
     ): void {
         if (!this.cells) throw new TypeError();
         let tagSet = map.get(target);
@@ -148,9 +148,9 @@ class FinalizationGroupNodeStub<Holdings>
     }
 
     cleanupSome(
-        cleanupCallback?:
+        cleanupCallback:
             | FinalizationGroup.CleanupCallback<Holdings>
-            | undefined
+            | undefined = undefined
     ): void {
         if (!this.cells) throw new TypeError();
         const context = { cells: this.cells };

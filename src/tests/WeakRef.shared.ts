@@ -37,6 +37,10 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
         });
 
         describe("constructor", function() {
+            it("should have a length of 1", function() {
+                expect(WeakRef.length).to.be.equal(1);
+            });
+
             it("should throw when constructor called without new", async function() {
                 const constructorFn: Function = WeakRef;
 
@@ -54,6 +58,10 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
         });
 
         describe("deref", function() {
+            it("should have a length of 0", function() {
+                expect(WeakRef.prototype.deref.length).to.be.equal(0);
+            });
+
             describe("should throw when function invoked on non-object", function() {
                 expectThrowIfNotObject((value: any) =>
                     WeakRef.prototype.deref.call(value)
