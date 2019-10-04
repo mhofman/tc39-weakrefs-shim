@@ -18,7 +18,7 @@
     "test:node:esm": "trap 'exit 0' INT; cd ./tmp-node-esm && node --expose-gc -r esm -r ./tests/setup/node ../node_modules/mocha/bin/_mocha --opts ../mocha.opts",
     "posttest:node:esm": "rimraf tmp-node-esm",
     "pretest:node:esm:experimental": "npm run pretest:node:esm && cp package.module.json tmp-node-esm/package.json",
-    "test:node:esm:experimental": "trap 'exit 0' INT; cd ./tmp-node-esm && node --experimental-modules --expose-gc -r ./tests/setup/node -r ./tests/setup/node/mocha-loadfiles-import.js ../node_modules/mocha/bin/_mocha --opts ../mocha.opts",
+    "test:node:esm:experimental": "trap 'exit 0' INT; cd ./tmp-node-esm && node --harmony-weak-refs --experimental-modules --expose-gc -r ./tests/setup/node -r ./tests/setup/node/mocha-loadfiles-import.js ../node_modules/mocha/bin/_mocha --opts ../mocha.opts",
     "posttest:node:esm:experimental": "rimraf tmp-node-esm",
     "pretest:node:cjs": "tsc -p tests/setup/node/tsconfig.cjs.json && copyfiles tests/setup/node/*.js tmp-node-cjs && cp package.lib.json tmp-node-cjs/package.json",
     "test:node:cjs": "trap 'exit 0' INT; cd ./tmp-node-cjs && node --expose-gc -r ./tests/setup/node ../node_modules/mocha/bin/_mocha --opts ../mocha.opts",

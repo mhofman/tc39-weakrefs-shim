@@ -71,6 +71,7 @@
       "cwd": "${workspaceFolder}/tmp-node-esm",
       "outFiles": ["${workspaceFolder}/tmp-node-esm/**/*.js"],
       "runtimeArgs": [
+        "--harmony-weak-refs",
         "--expose-gc",
         "--experimental-modules",
         "--require", "./tests/setup/node",

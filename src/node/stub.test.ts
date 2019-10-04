@@ -3,8 +3,9 @@ import { shouldBehaveAsFinalizationGroupAccordingToSpec } from "../tests/Finaliz
 import { shouldBehaveAsWeakRefAccordingToSpec } from "../tests/WeakRef.shared.js";
 import { available as gcAvailable } from "../global/gc.js";
 import available from "./available.js";
+import globalAvailable from "../global/available.js";
 
-if (available)
+if (!globalAvailable && available)
     describe("Weakrefs node stub", function() {
         const shimDetails = import("./stub.js").then(exports => ({
             ...exports,
