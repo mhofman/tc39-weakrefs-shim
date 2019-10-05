@@ -76,7 +76,7 @@
  *     milliseconds.
  * @return {Function} The function which runs the scheduled timers.
  */
-function makeWindowTimer(target, sleep, runMicrotasks) {
+function makeWindowTimer(target) {
     "use strict";
 
     var counter = 1,
@@ -163,6 +163,7 @@ function makeWindowTimer(target, sleep, runMicrotasks) {
             code: code,
             handle: handle,
             repeat: repeat ? Math.max(delay, 4) : 0,
+            immediate: immediate,
             time: new Date().getTime() + delay
         };
 
@@ -174,27 +175,31 @@ function makeWindowTimer(target, sleep, runMicrotasks) {
     }
 
     /** Cancel an existing timer */
-    function cancelTimer(handle, repeat) {
+    function cancelTimer(handle, repeat, immediate) {
         var timer;
 
         if (timersByHandle.hasOwnProperty(handle)) {
             timer = timersByHandle[handle];
-            if (repeat === (timer.repeat > 0)) {
+            if (repeat === (timer.repeat > 0) && immediate === timer.immediate) {
                 timer.cancel = true;
             }
         }
     }
 
     function clearInterval(handle) {
-        cancelTimer(handle, true);
+        cancelTimer(handle, true, false);
     }
     target.clearInterval = clearInterval;
 
     function clearTimeout(handle) {
-        cancelTimer(handle, false);
+        cancelTimer(handle, false, false);
     }
     target.clearTimeout = clearTimeout;
-    target.clearImmediate = clearTimeout;
+
+    function clearImmediate(handle) {
+        cancelTimer(handle, false, true);
+    }
+    target.clearImmediate = clearImmediate;
 
     function setInterval(code, delay) {
         return addTimer(
@@ -229,7 +234,7 @@ function makeWindowTimer(target, sleep, runMicrotasks) {
     }
     target.setImmediate = setImmediate;
 
-    return function timerLoop(nonblocking) {
+    return function * timerLoop() {
         var now, timer;
 
         // Note: index 0 unused in timersByTime
@@ -274,16 +279,12 @@ function makeWindowTimer(target, sleep, runMicrotasks) {
                         heapPop(timersByTime, timerCompare);
                     }
 
-                    runMicrotasks();
-                } else if (!nonblocking) {
-                    sleep(timer.time - now);
+                    yield 0;
                 } else {
-                    return true;
+                    yield timer.time - now;
                 }
             }
         }
-
-        return false;
     };
 }
 

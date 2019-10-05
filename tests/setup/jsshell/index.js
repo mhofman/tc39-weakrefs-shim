@@ -2,10 +2,10 @@ load("./runner.js");
 
 execute(
     [
-        "global.js",
+        "./global.js",
         "../../../../node_modules/karma/static/context.js",
-        "debug.js",
-        "karma-config.js",
+        "./debug.js",
+        "./karma-config.js",
         "../../../../node_modules/chai/chai.js",
         "../../../../node_modules/karma-chai/adapter.js",
         "../../../../node_modules/chai-spies/chai-spies.js",
@@ -23,6 +23,11 @@ execute(
         "../../../src/spidermonkey/internal.test.js",
         "./karma-start.js",
     ],
-    // Needed for module resolution somehow
-    module => import(module)
+    // Needed for spidermonkey module resolution somehow
+    module => import(module),
+    err => {
+        if (err) throw err;
+
+        quit(window.__karma__.failed);
+    }
 );

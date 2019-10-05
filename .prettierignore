@@ -1,2 +1,2 @@
 src/utils/lodash
-tests/setup/spidermonkey/windowTimers.js
+tests/setup/jsshell/windowTimers.js
