@@ -88,6 +88,7 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
                 const weakRef = new WeakRef(object);
                 const collected = gcOf(object, clearKeptObjects());
                 object = undefined!;
+                /* Temporary workaround for v8 shell*/ gc!();
                 if ((await collected) === false) this.skip();
                 expect(weakRef.deref()).to.be.equal(undefined);
             });
@@ -95,6 +96,7 @@ export function shouldBehaveAsWeakRefAccordingToSpec(
             it("should return undefined if target collected (indirect observe)", async function() {
                 const weakRef = new WeakRef({});
                 const collected = gcOf(undefined, clearKeptObjects());
+                /* Temporary workaround for v8 shell*/ gc!();
                 if ((await collected) === false) this.skip();
                 expect(weakRef.deref()).to.be.equal(undefined);
             });

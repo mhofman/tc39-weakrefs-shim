@@ -17,7 +17,7 @@ declare namespace process {
 
 export function itCatchCleanStackError(
     description: string,
-    test: () => void | Promise<void>,
+    test: (this: Mocha.Context) => void | Promise<void>,
     timeout = 50
 ) {
     if (typeof window == "object" && "onerror" in window) {
@@ -32,15 +32,15 @@ export function itCatchCleanStackError(
                 };
             });
             try {
-                await test();
+                await test.call(this);
             } finally {
                 await Promise.race([
                     thrown,
                     new Promise<void>(resolve => setTimeout(resolve, timeout)),
                 ]);
                 window.onerror = savedOnError;
-                expect(onErrorSpy).to.have.been.called.once;
             }
+            expect(onErrorSpy).to.have.been.called.once;
         });
     } else if (typeof process == "object" && "prependOnceListener" in process) {
         it(description, async function() {
@@ -56,7 +56,7 @@ export function itCatchCleanStackError(
                 process.prependOnceListener("uncaughtException", listener);
             });
             try {
-                await test();
+                await test.call(this);
             } finally {
                 const caught = await Promise.race([
                     thrown,

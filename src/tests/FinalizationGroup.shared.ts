@@ -16,6 +16,9 @@ import { combine } from "../utils/iterable.js";
 
 import { FinalizationGroup } from "../weakrefs.js";
 
+// Temporary workaround to detecting broken d8 shells
+declare var version: () => string;
+
 export function expectThrowIfNotObject(
     functionToTest: (value: any) => any,
     skipUndefined = false
@@ -834,6 +837,18 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         async function() {
                             let object = {};
                             let resolve: () => void;
+
+                            // d8 SegFaults in version 7.8 and above
+                            if (
+                                typeof version == "function" &&
+                                Function.prototype.toString
+                                    .call(FinalizationGroup)
+                                    .indexOf("native code") > 0 &&
+                                Number(version().substring(0, 3)) > 7.7
+                            ) {
+                                this.skip();
+                            }
+
                             const called = new Promise<void>(r => {
                                 resolve = r;
                             });
