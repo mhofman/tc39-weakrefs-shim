@@ -50,8 +50,32 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
     setupCleanupJob: (
         this: Mocha.Context,
         cleanupCallback: FinalizationGroup.CleanupCallback
-    ) => PromiseLike<() => void>
+    ) => [() => void, PromiseLike<any> | false]
 ): void {
+    it("should call callback", async function() {
+        let calledResolve: () => void;
+        let called = new Promise(r => {
+            calledResolve = r;
+        });
+        const cleanupCallback = chai.spy<
+            FinalizationGroup.CleanupIterator,
+            void
+        >(function(i) {
+            calledResolve();
+        });
+
+        const [triggerCleanupJob, triggered] = setupCleanupJob.call(
+            this,
+            cleanupCallback
+        );
+        if (!triggered) {
+            triggerCleanupJob();
+        } else {
+            await triggered;
+        }
+        await called;
+    });
+
     it("should not swallow errors", async function() {
         let called = true;
         const cleanupCallback = chai.spy<
@@ -63,30 +87,40 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
             throw new Error("Should not be swallowed");
         });
 
-        const triggerCleanupJob = await setupCleanupJob.call(
+        const [triggerCleanupJob, triggered] = setupCleanupJob.call(
             this,
             cleanupCallback
         );
+        await triggered;
         called = false;
         expect(triggerCleanupJob).to.throw();
         expect(called).to.be.true;
     });
 
     it("should throw when using the iterator outside cleanup job", async function() {
-        let iterator: FinalizationGroup.CleanupIterator;
+        let iteratorResolve: (value: FinalizationGroup.CleanupIterator) => void;
+        let iteratorPromise = new Promise<FinalizationGroup.CleanupIterator>(
+            r => {
+                iteratorResolve = r;
+            }
+        );
         const cleanupCallback = chai.spy<
             FinalizationGroup.CleanupIterator,
             void
         >(function(i) {
-            iterator = i;
+            iteratorResolve(i);
         });
 
-        const triggerCleanupJob = await setupCleanupJob.call(
+        const [triggerCleanupJob, triggered] = setupCleanupJob.call(
             this,
             cleanupCallback
         );
-        triggerCleanupJob();
-        expect(cleanupCallback).to.have.been.called();
+        if (!triggered) {
+            triggerCleanupJob();
+        } else {
+            await triggered;
+        }
+        const iterator = await iteratorPromise;
         expect(() => iterator!.next()).to.throw();
     });
 
@@ -94,6 +128,10 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
         let iterator: FinalizationGroup.CleanupIterator;
         let iteratorChecked = false;
         let threw: Error | undefined;
+        let calledOnceResolve: () => void;
+        let calledOnce = new Promise(r => {
+            calledOnceResolve = r;
+        });
         const cleanupCallback = chai.spy<
             FinalizationGroup.CleanupIterator,
             void
@@ -108,14 +146,20 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
                 }
             } else {
                 iterator = i;
+                calledOnceResolve();
             }
         });
 
-        const triggerCleanupJob = await setupCleanupJob.call(
+        const [triggerCleanupJob, triggered] = setupCleanupJob.call(
             this,
             cleanupCallback
         );
-        triggerCleanupJob();
+        if (!triggered) {
+            triggerCleanupJob();
+        } else {
+            await triggered;
+        }
+        await calledOnce;
         triggerCleanupJob();
         expect(iteratorChecked).to.be.true;
         expect(threw).to.be.an("error");
@@ -124,6 +168,10 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
     it("should throw when nesting cleanup calls", async function() {
         let triggerCleanupJob: undefined | (() => void);
         let threw: Error | undefined;
+        let calledResolve: () => void;
+        let called = new Promise(r => {
+            calledResolve = r;
+        });
         const cleanupCallback = chai.spy<
             FinalizationGroup.CleanupIterator,
             void
@@ -132,6 +180,8 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
             const trigger = triggerCleanupJob;
             triggerCleanupJob = undefined;
 
+            calledResolve();
+
             try {
                 trigger();
             } catch (err) {
@@ -139,9 +189,17 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
             }
         });
 
-        triggerCleanupJob = await setupCleanupJob.call(this, cleanupCallback);
-        triggerCleanupJob();
-        expect(cleanupCallback).to.have.been.called();
+        let triggered;
+        [triggerCleanupJob, triggered] = setupCleanupJob.call(
+            this,
+            cleanupCallback
+        );
+        if (!triggered) {
+            triggerCleanupJob();
+        } else {
+            await triggered;
+        }
+        await called;
         expect(threw).to.be.an("error");
     });
 
@@ -158,11 +216,17 @@ export function shouldBehaveAsCleanupJopAccordingToSpec(
                 );
             };
 
-            const triggerCleanupJob = await setupCleanupJob.call(
+            const [triggerCleanupJob, triggered] = setupCleanupJob.call(
                 this,
                 cleanupCallback
             );
-            triggerCleanupJob();
+            if (!triggered) {
+                triggerCleanupJob();
+            } else {
+                await triggered;
+                // Make sure the callback had the chance to be invoked
+                await clearKeptObjects();
+            }
 
             if (!called) this.skip();
         });
@@ -617,13 +681,16 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                             expect(callback).to.have.been.called();
                     });
 
-                    shouldBehaveAsCleanupJopAccordingToSpec(async function(
+                    shouldBehaveAsCleanupJopAccordingToSpec(function(
                         cleanupCallback
                     ) {
                         if (!workingCleanupSome) this.skip();
-                        return function() {
-                            finalizationGroup.cleanupSome(cleanupCallback);
-                        };
+                        return [
+                            function() {
+                                finalizationGroup.cleanupSome(cleanupCallback);
+                            },
+                            false,
+                        ];
                     });
                 });
             } else {
@@ -758,7 +825,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         );
                         finalizationGroup.register(object, 42);
                         await gcOf!();
-                        finalizationGroup.cleanupSome();
+                        await clearKeptObjects();
                         expect(callback).not.to.have.been.called();
                     });
 
@@ -784,7 +851,7 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         }
                     );
 
-                    shouldBehaveAsCleanupJopAccordingToSpec(async function(
+                    shouldBehaveAsCleanupJopAccordingToSpec(function(
                         cleanupCallback
                     ) {
                         let object = {};
@@ -794,10 +861,12 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                         finalizationGroup.register(object, 42);
                         const collected = gcOf!(object);
                         object = undefined!;
-                        await collected;
-                        return function() {
-                            finalizationGroup.cleanupSome();
-                        };
+                        return [
+                            function() {
+                                finalizationGroup.cleanupSome();
+                            },
+                            collected,
+                        ];
                     });
                 });
 

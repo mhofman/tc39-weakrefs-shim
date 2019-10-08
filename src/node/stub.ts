@@ -72,8 +72,9 @@ Object.defineProperty(
 class FinalizationGroupNodeStub<Holdings>
     implements FinalizationGroup<Holdings> {
     private readonly finalizedCallback: ObjectInfo.FinalizedCallback;
-    private readonly cells: Map<ObjectInfo, Cell>;
-    private isCleanupJobActive = false;
+    private readonly cells: Map<ObjectInfo, Cell> & {
+        isCleanupJobActive: boolean;
+    };
 
     constructor(
         private readonly cleanupCallback: FinalizationGroup.CleanupCallback<
@@ -81,10 +82,15 @@ class FinalizationGroupNodeStub<Holdings>
         >
     ) {
         if (typeof cleanupCallback != "function") throw new TypeError();
-        const cells = (this.cells = new Map());
+        this.cells = new Map() as Map<ObjectInfo, Cell> & {
+            isCleanupJobActive: boolean;
+        };
+        this.cells.isCleanupJobActive = false;
+        const cells = this.cells;
         this.finalizedCallback = function(this: ObjectInfo) {
             if (!cells.get(this)) return;
             const context = { info: this, cells };
+            cells.isCleanupJobActive = true;
             try {
                 cleanupCallback(CleanupIterator(getCellEntry(context)));
             } catch (error) {
@@ -92,6 +98,7 @@ class FinalizationGroupNodeStub<Holdings>
                     throw error;
                 });
             }
+            cells.isCleanupJobActive = false;
             context.info = context.cells = undefined!;
         };
     }
@@ -156,7 +163,7 @@ class FinalizationGroupNodeStub<Holdings>
         const context = { cells: this.cells };
         const emptyObjectInfos = getEmptyCellEntries(context);
 
-        if (this.isCleanupJobActive) throw new TypeError();
+        if (this.cells.isCleanupJobActive) throw new TypeError();
 
         if (cleanupCallback === undefined) {
             cleanupCallback = this
@@ -171,11 +178,11 @@ class FinalizationGroupNodeStub<Holdings>
         }
 
         try {
-            this.isCleanupJobActive = true;
+            this.cells.isCleanupJobActive = true;
             cleanupCallback(CleanupIterator(emptyObjectInfos));
         } finally {
             context.cells = undefined!;
-            this.isCleanupJobActive = false;
+            this.cells.isCleanupJobActive = false;
         }
     }
 }

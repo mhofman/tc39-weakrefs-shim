@@ -364,10 +364,11 @@ describe("FinalizationGroupShim", function() {
                 expect(callback).to.have.been.called();
             });
 
-            shouldBehaveAsCleanupJopAccordingToSpec(async function(
-                cleanupCallback
-            ) {
-                return () => finalizationGroup.cleanupSome(cleanupCallback);
+            shouldBehaveAsCleanupJopAccordingToSpec(function(cleanupCallback) {
+                return [
+                    () => finalizationGroup.cleanupSome(cleanupCallback),
+                    false,
+                ];
             });
         });
     });
