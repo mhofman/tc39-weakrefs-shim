@@ -883,6 +883,66 @@ export function shouldBehaveAsFinalizationGroupAccordingToSpec(
                             collected,
                         ];
                     });
+
+                    it("calls callback even when instance not reachable", function() {
+                        let object = {};
+
+                        const cleanupCallback = chai.spy<
+                            FinalizationGroup.CleanupIterator<
+                                (collected: true) => void
+                            >,
+                            void
+                        >(function(i) {
+                            for (let resolve of i) resolve(true);
+                        });
+
+                        let reachableResolve: (collected: true) => void;
+                        const reachablePromise = new Promise<true>(r => {
+                            reachableResolve = r;
+                        });
+                        const reachableFinalizationGroup = new FinalizationGroup(
+                            cleanupCallback
+                        );
+                        reachableFinalizationGroup.register(
+                            object,
+                            reachableResolve!
+                        );
+
+                        let unreachableResolve: (collected: true) => void;
+                        const unreachablePromise = new Promise<true>(r => {
+                            unreachableResolve = r;
+                        });
+                        let unreachableFinalizationGroup = new FinalizationGroup(
+                            cleanupCallback
+                        );
+                        unreachableFinalizationGroup.register(
+                            object,
+                            unreachableResolve!
+                        );
+                        unreachableFinalizationGroup = undefined!;
+
+                        let objectCollected = gcOf!(object);
+                        object = undefined!;
+
+                        return objectCollected
+                            .then(() => {
+                                const timeout = new Promise<false>(resolve =>
+                                    setTimeout(resolve, 500, false)
+                                );
+
+                                return Promise.all([
+                                    Promise.race([reachablePromise, timeout]),
+                                    Promise.race([unreachablePromise, timeout]),
+                                ]);
+                            })
+                            .then(([reachableCalled, unreachableCalled]) => {
+                                expect(reachableCalled).to.be.equal(
+                                    unreachableCalled
+                                );
+                                // Reference necessary to keep finalization group alive
+                                expect(reachableFinalizationGroup).to.be.ok;
+                            });
+                    });
                 });
 
                 describe("instance - collection behavior", function() {
